@@ -35,25 +35,45 @@
   </div>
 </div>
 
-<div class="panel">
-  <div class="panel-head">
-    <h3>Revenue · last 14 days</h3>
-    <small class="muted">Hover the bars for daily total</small>
+<div class="chart-grid" data-reveal>
+  <div class="panel chart-card">
+    <div class="panel-head">
+      <h3>📈 Revenue · last 14 days</h3>
+      <small class="muted live-dot"><span></span> live · auto-refresh 30s</small>
+    </div>
+    <div class="chart-wrap"><canvas id="revChart"></canvas></div>
   </div>
-  <div class="bars">
-    {% set max_v = (revenue_series | map(attribute='value') | max) or 1 %}
-    {% for d in revenue_series %}
-      <div style="display:flex; flex-direction:column; align-items:center; flex:1; gap: 4px;">
-        <div class="bar" title="₱{{ '{:,.0f}'.format(d.value) }} on {{ d.day }}" style="width: 100%; height: {{ (d.value / max_v * 100) if max_v else 0 }}%;"></div>
-        <div class="bar-label">{{ d.day }}</div>
-      </div>
-    {% endfor %}
+
+  <div class="panel chart-card">
+    <div class="panel-head">
+      <h3>🥧 Orders by status</h3>
+      <small class="muted live-dot"><span></span> live</small>
+    </div>
+    <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
   </div>
 </div>
 
-<div class="panel">
+<div class="chart-grid" data-reveal>
+  <div class="panel chart-card">
+    <div class="panel-head">
+      <h3>🛍️ Products by category</h3>
+      <small class="muted live-dot"><span></span> live</small>
+    </div>
+    <div class="chart-wrap"><canvas id="catChart"></canvas></div>
+  </div>
+
+  <div class="panel chart-card">
+    <div class="panel-head">
+      <h3>⭐ Top sellers · all time</h3>
+      <small class="muted live-dot"><span></span> live</small>
+    </div>
+    <div class="chart-wrap"><canvas id="topChart"></canvas></div>
+  </div>
+</div>
+
+<div class="panel" data-reveal>
   <div class="panel-head">
-    <h3>Recent orders</h3>
+    <h3>📦 Recent orders</h3>
     <a href="{{ url_for('admin.orders') }}" class="btn btn-sm btn-ghost">See all →</a>
   </div>
   {% if recent_orders %}
@@ -76,4 +96,132 @@
     <div class="empty"><h3>No orders yet 🌷</h3><p>Orders will appear here when customers check out.</p></div>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const ENDPOINT = "{{ url_for('admin.analytics_json') }}";
+  const PINK = '#ec4f8a', PEACH = '#ff8db4', LAV = '#c8a8ff',
+        MINT = '#7fd1a9', SKY = '#7eb8ff', AMBER = '#f4b740';
+  const PALETTE = [PINK, PEACH, LAV, MINT, SKY, AMBER];
+
+  const charts = {};
+
+  function lineChart(ctx, labels, data) {
+    const grad = ctx.createLinearGradient(0, 0, 0, 240);
+    grad.addColorStop(0, 'rgba(236, 79, 138, .35)');
+    grad.addColorStop(1, 'rgba(236, 79, 138, 0)');
+    return new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets: [{
+        label: 'Revenue ₱', data, fill: true,
+        borderColor: PINK, backgroundColor: grad,
+        pointRadius: 3, pointBackgroundColor: PINK,
+        borderWidth: 3, tension: .35,
+      }]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#7a6470' } },
+          y: { grid: { color: '#f1e8ed' }, ticks: { color: '#7a6470',
+                callback: (v) => '₱' + Number(v).toLocaleString() } },
+        },
+      },
+    });
+  }
+  function donutChart(ctx, labels, data, colors) {
+    return new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#fff', borderWidth: 3 }]},
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '64%',
+        plugins: { legend: { position: 'bottom', labels: { color: '#4a3540', font: { size: 12 }, padding: 12 } } },
+      },
+    });
+  }
+  function barChart(ctx, labels, data) {
+    return new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{
+        label: 'Qty sold', data,
+        backgroundColor: PALETTE.map((c, i) => c),
+        borderRadius: 12, borderSkipped: false, maxBarThickness: 28,
+      }]},
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#f1e8ed' }, ticks: { color: '#7a6470', precision: 0 } },
+          y: { grid: { display: false }, ticks: { color: '#4a3540', font: { weight: 600 } } },
+        },
+      },
+    });
+  }
+
+  async function refresh() {
+    let payload;
+    try {
+      const r = await fetch(ENDPOINT, { credentials: 'include' });
+      payload = await r.json();
+      if (!payload.ok) return;
+    } catch (_) { return; }
+
+    const rev = payload.revenue || [];
+    const revLabels = rev.map(d => d.day);
+    const revData = rev.map(d => d.value);
+
+    if (!charts.rev) {
+      charts.rev = lineChart(document.getElementById('revChart').getContext('2d'), revLabels, revData);
+    } else {
+      charts.rev.data.labels = revLabels;
+      charts.rev.data.datasets[0].data = revData;
+      charts.rev.update();
+    }
+
+    const st = payload.status || {};
+    const stOrder = ['pending', 'preparing', 'shipped', 'delivered', 'cancelled'];
+    const stLabels = stOrder.filter(k => st[k]);
+    const stData = stLabels.map(k => st[k]);
+    const stColors = [AMBER, PEACH, SKY, MINT, '#cdc1c8'].slice(0, stLabels.length);
+    if (!charts.status) {
+      charts.status = donutChart(document.getElementById('statusChart').getContext('2d'), stLabels, stData, stColors);
+    } else {
+      charts.status.data.labels = stLabels;
+      charts.status.data.datasets[0].data = stData;
+      charts.status.data.datasets[0].backgroundColor = stColors;
+      charts.status.update();
+    }
+
+    const cat = payload.categories || {};
+    const catLabels = Object.keys(cat);
+    const catData = catLabels.map(k => cat[k]);
+    const catColors = PALETTE.slice(0, catLabels.length);
+    if (!charts.cat) {
+      charts.cat = donutChart(document.getElementById('catChart').getContext('2d'), catLabels, catData, catColors);
+    } else {
+      charts.cat.data.labels = catLabels;
+      charts.cat.data.datasets[0].data = catData;
+      charts.cat.data.datasets[0].backgroundColor = catColors;
+      charts.cat.update();
+    }
+
+    const top = payload.top_sellers || [];
+    const topLabels = top.map(t => t.name);
+    const topData = top.map(t => t.qty);
+    if (!charts.top) {
+      charts.top = barChart(document.getElementById('topChart').getContext('2d'), topLabels, topData);
+    } else {
+      charts.top.data.labels = topLabels;
+      charts.top.data.datasets[0].data = topData;
+      charts.top.update();
+    }
+  }
+
+  refresh();
+  setInterval(refresh, 30000);
+})();
+</script>
 {% endblock %}

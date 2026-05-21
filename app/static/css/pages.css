@@ -703,3 +703,92 @@
   color: var(--ink-500);
   font-size: .85rem;
 }
+
+/* ============================================================
+   Chart.js panels + Users management
+============================================================ */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  margin: 18px 0;
+}
+@media (max-width: 980px) { .chart-grid { grid-template-columns: 1fr; } }
+
+.chart-card { padding: 22px; }
+.chart-wrap {
+  position: relative;
+  height: 280px;
+  margin-top: 12px;
+}
+@media (max-width: 600px) { .chart-wrap { height: 240px; } }
+
+.live-dot {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.live-dot > span {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #6fcf97;
+  display: inline-block;
+  box-shadow: 0 0 0 0 rgba(111, 207, 151, .6);
+  animation: live-pulse 1.6s infinite;
+}
+@keyframes live-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(111, 207, 151, .55); }
+  70%  { box-shadow: 0 0 0 10px rgba(111, 207, 151, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(111, 207, 151, 0); }
+}
+
+/* Admin users page */
+.users-search {
+  position: relative;
+}
+.users-search input {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: var(--surface);
+  min-width: 260px;
+  font-size: .9rem;
+}
+.users-search input:focus {
+  outline: none;
+  border-color: var(--pink-300);
+  box-shadow: 0 0 0 3px rgba(236, 79, 138, .15);
+}
+.users-table .avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.users-table td { vertical-align: middle; }
+.users-table tr:hover { background: #fffafc; }
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.action-buttons .btn-sm {
+  font-size: .78rem;
+  padding: 6px 10px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  letter-spacing: .03em;
+}
+.badge-pink     { background: #ffdbe7; color: #c5366d; }
+.badge-lavender { background: #efe5ff; color: #7d5fb8; }
+.badge-green    { background: #d8f3e6; color: #2d7a47; }
+.badge-amber    { background: #fff1cd; color: #a87900; }

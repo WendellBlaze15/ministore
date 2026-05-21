@@ -1,0 +1,128 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Admin · Users — Papier Lab{% endblock %}
+{% block admin %}
+<header data-reveal>
+  <span class="tag">user management</span>
+  <h1 style="margin: 6px 0 4px;">Everyone with an account 👥</h1>
+  <p class="muted">Search, change roles, force-verify, or delete accounts. Be careful — deletes are permanent.</p>
+</header>
+
+<div class="metrics metrics-grad" style="margin-top: 20px;" data-reveal>
+  <div class="metric grad-pink">
+    <div class="metric-ico">👥</div>
+    <div class="lbl">All users</div>
+    <div class="val">{{ summary.total }}</div>
+    <div class="sub">Total accounts</div>
+  </div>
+  <div class="metric grad-peach">
+    <div class="metric-ico">🌷</div>
+    <div class="lbl">Customers</div>
+    <div class="val">{{ summary.customers }}</div>
+    <div class="sub">Buyers + visitors</div>
+  </div>
+  <div class="metric grad-lavender">
+    <div class="metric-ico">👑</div>
+    <div class="lbl">Admins</div>
+    <div class="val">{{ summary.admins }}</div>
+    <div class="sub">Studio staff</div>
+  </div>
+  <div class="metric grad-mint">
+    <div class="metric-ico">📨</div>
+    <div class="lbl">Pending verify</div>
+    <div class="val">{{ summary.unverified }}</div>
+    <div class="sub">Email not confirmed</div>
+  </div>
+</div>
+
+<section class="panel" data-reveal>
+  <div class="panel-head">
+    <h3>All users</h3>
+    <div class="users-search">
+      <input id="userSearch" type="search" placeholder="Search by email, name, role…" />
+    </div>
+  </div>
+  {% if users %}
+  <table class="table users-table" id="usersTable">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Joined</th>
+        <th>Orders</th>
+        <th>Spend</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr data-row>
+        <td>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="avatar" style="background: var(--pink-100); color: var(--pink-700);">{{ (u.full_name or u.email)[:1] | upper }}</div>
+            <div>
+              <b data-search>{{ u.full_name or u.email.split('@')[0] }}</b>
+              <small class="muted" data-search style="display:block;">{{ u.email }}</small>
+              {% if u.contact_number %}<small class="muted">📞 {{ u.contact_number }}</small>{% endif %}
+            </div>
+          </div>
+        </td>
+        <td>
+          <span class="badge {{ 'badge-pink' if u.role == 'admin' else 'badge-lavender' }}" data-search>{{ u.role }}</span>
+        </td>
+        <td>
+          {% if u.email_confirmed %}
+            <span class="badge badge-green">verified</span>
+          {% else %}
+            <span class="badge badge-amber">pending</span>
+          {% endif %}
+        </td>
+        <td><small class="muted">{{ (u.created_at or '')[:10] or '—' }}</small></td>
+        <td><b>{{ u.orders }}</b></td>
+        <td>₱{{ '{:,.2f}'.format(u.spend) }}</td>
+        <td>
+          <div class="action-buttons">
+            <form method="post" action="{{ url_for('admin.user_set_role', user_id=u.id) }}" style="display:inline;">
+              <input type="hidden" name="role" value="{{ 'customer' if u.role == 'admin' else 'admin' }}" />
+              <button class="btn btn-sm btn-ghost" type="submit" title="Toggle role">
+                {{ '↓ Make customer' if u.role == 'admin' else '↑ Make admin' }}
+              </button>
+            </form>
+            {% if not u.email_confirmed %}
+            <form method="post" action="{{ url_for('admin.user_force_verify', user_id=u.id) }}" style="display:inline;">
+              <button class="btn btn-sm btn-secondary" type="submit" title="Mark email as verified">✔ Verify</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{{ url_for('admin.user_delete', user_id=u.id) }}" style="display:inline;"
+                  onsubmit="return confirm('Permanently delete {{ u.email }}? This removes their orders, wishlist, chats — and cannot be undone.');">
+              <button class="btn btn-sm btn-danger" type="submit" title="Delete user">🗑 Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <h3>No users yet</h3>
+    <p>When buyers register they'll show up here.</p>
+  </div>
+  {% endif %}
+</section>
+
+<script>
+  (function () {
+    const input = document.getElementById('userSearch');
+    const rows = document.querySelectorAll('[data-row]');
+    if (!input) return;
+    input.addEventListener('input', () => {
+      const q = input.value.trim().toLowerCase();
+      rows.forEach((r) => {
+        const txt = Array.from(r.querySelectorAll('[data-search]')).map(e => e.textContent.toLowerCase()).join(' ');
+        r.style.display = (!q || txt.includes(q)) ? '' : 'none';
+      });
+    });
+  })();
+</script>
+{% endblock %}

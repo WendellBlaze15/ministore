@@ -120,6 +120,89 @@ def _build_revenue_series(orders, days=14):
     return [{"day": d.strftime("%b %d"), "value": round(v, 2)} for d, v in ordered]
 
 
+@bp.route("/api/analytics")
+@admin_required
+def analytics_json():
+    """Real-time analytics feed for Chart.js dashboards. Polled by the
+    admin overview + reports pages every 30 seconds."""
+    svc = get_service_client()
+    if not svc:
+        return jsonify({"ok": False}), 500
+
+    try:
+        orders = (
+            svc.table("orders")
+            .select("id, status, total, created_at")
+            .order("created_at", desc=True)
+            .limit(1000)
+            .execute()
+        ).data or []
+    except Exception:
+        orders = []
+
+    try:
+        order_items = (
+            svc.table("order_items")
+            .select("name, quantity, unit_price")
+            .execute()
+        ).data or []
+    except Exception:
+        order_items = []
+
+    try:
+        products = (svc.table("products").select("category").execute()).data or []
+    except Exception:
+        products = []
+
+    try:
+        customers = (svc.table("profiles").select("id", count="exact").eq("role", "customer").execute()).count or 0
+    except Exception:
+        customers = 0
+
+    # Revenue line — last 14 days
+    revenue = _build_revenue_series(orders, days=14)
+
+    # Status donut
+    status_count: dict[str, int] = {}
+    for o in orders:
+        status_count[o["status"]] = status_count.get(o["status"], 0) + 1
+
+    # Category pie
+    by_cat: dict[str, int] = {}
+    for p in products:
+        c = (p.get("category") or "other").lower()
+        by_cat[c] = by_cat.get(c, 0) + 1
+
+    # Top sellers bar
+    rank: dict[str, dict] = {}
+    for it in order_items:
+        name = it.get("name", "?")
+        row = rank.setdefault(name, {"name": name, "qty": 0, "rev": 0.0})
+        q = int(it.get("quantity") or 0)
+        row["qty"] += q
+        row["rev"] += q * float(it.get("unit_price") or 0)
+    top = sorted(rank.values(), key=lambda r: r["qty"], reverse=True)[:6]
+
+    return jsonify({
+        "ok": True,
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "revenue": revenue,
+        "status": status_count,
+        "categories": by_cat,
+        "top_sellers": top,
+        "totals": {
+            "orders": len(orders),
+            "customers": customers,
+            "revenue_all": round(sum(float(o["total"]) for o in orders if o["status"] != "cancelled"), 2),
+            "revenue_30d": round(sum(
+                float(o["total"]) for o in orders
+                if o["status"] != "cancelled" and _to_dt(o["created_at"])
+                and _to_dt(o["created_at"]) >= datetime.now(timezone.utc) - timedelta(days=30)
+            ), 2),
+        },
+    })
+
+
 # ---------------- Products ----------------
 
 @bp.route("/products")
@@ -344,6 +427,163 @@ def customers():
         except Exception:
             rows = []
     return render_template("admin/customers.html", customers=rows)
+
+
+# ---------------- Users management ----------------
+
+@bp.route("/users")
+@admin_required
+def users():
+    """Full user management — every auth user with role, verified state,
+    last sign-in, order count, and per-row delete/promote actions."""
+    svc = get_service_client()
+    rows: list[dict] = []
+    if svc:
+        try:
+            auth_users = svc.auth.admin.list_users() or []
+        except Exception as exc:
+            current_app.logger.warning("admin list_users failed: %s", exc)
+            auth_users = []
+
+        try:
+            profiles = (
+                svc.table("profiles").select("id, email, full_name, role, created_at, contact_number").execute()
+            ).data or []
+        except Exception:
+            profiles = []
+        profile_by_id = {p["id"]: p for p in profiles}
+
+        try:
+            orders = (
+                svc.table("orders").select("user_id, total, status").execute()
+            ).data or []
+        except Exception:
+            orders = []
+        order_count: dict[str, int] = {}
+        order_spend: dict[str, float] = {}
+        for o in orders:
+            uid = o.get("user_id")
+            if not uid:
+                continue
+            order_count[uid] = order_count.get(uid, 0) + 1
+            if o.get("status") != "cancelled":
+                order_spend[uid] = order_spend.get(uid, 0.0) + float(o.get("total") or 0)
+
+        def _iso(value):
+            """Normalize datetimes / strings to a stable ISO string."""
+            if not value:
+                return ""
+            if isinstance(value, datetime):
+                return value.isoformat()
+            return str(value)
+
+        for u in auth_users:
+            uid = u.id
+            p = profile_by_id.get(uid, {})
+            rows.append({
+                "id": uid,
+                "email": u.email,
+                "full_name": p.get("full_name") or (getattr(u, "user_metadata", {}) or {}).get("full_name") or "",
+                "role": p.get("role") or "customer",
+                "contact_number": p.get("contact_number") or "",
+                "email_confirmed": bool(getattr(u, "email_confirmed_at", None)),
+                "created_at": _iso(getattr(u, "created_at", None) or p.get("created_at")),
+                "last_sign_in_at": _iso(getattr(u, "last_sign_in_at", None)),
+                "orders": order_count.get(uid, 0),
+                "spend": round(order_spend.get(uid, 0.0), 2),
+            })
+
+        # newest first
+        rows.sort(key=lambda r: r.get("created_at") or "", reverse=True)
+
+    summary = {
+        "total": len(rows),
+        "admins": sum(1 for r in rows if r["role"] == "admin"),
+        "customers": sum(1 for r in rows if r["role"] != "admin"),
+        "unverified": sum(1 for r in rows if not r["email_confirmed"]),
+    }
+    return render_template("admin/users.html", users=rows, summary=summary)
+
+
+@bp.route("/users/<user_id>/delete", methods=["POST"])
+@admin_required
+@require_same_origin
+def user_delete(user_id):
+    me = current_user() or {}
+    if me.get("id") == user_id:
+        flash("You can't delete your own admin account from here.", "error")
+        return redirect(url_for("admin.users"))
+
+    svc = get_service_client()
+    if not svc:
+        flash("Server not configured.", "error")
+        return redirect(url_for("admin.users"))
+    try:
+        # Best-effort: remove dependent rows first to make the delete clean.
+        try: svc.table("wishlists").delete().eq("user_id", user_id).execute()
+        except Exception: pass
+        try: svc.table("messages").delete().eq("sender_id", user_id).execute()
+        except Exception: pass
+        try: svc.table("chats").delete().eq("user_id", user_id).execute()
+        except Exception: pass
+        try: svc.table("profiles").delete().eq("id", user_id).execute()
+        except Exception: pass
+        svc.auth.admin.delete_user(user_id)
+        flash("User deleted.", "success")
+    except Exception as exc:
+        current_app.logger.warning("admin delete user failed: %s", exc)
+        flash(f"Could not delete user: {exc}", "error")
+    return redirect(url_for("admin.users"))
+
+
+@bp.route("/users/<user_id>/role", methods=["POST"])
+@admin_required
+@require_same_origin
+def user_set_role(user_id):
+    me = current_user() or {}
+    if me.get("id") == user_id:
+        flash("You can't change your own role here.", "error")
+        return redirect(url_for("admin.users"))
+
+    new_role = (request.form.get("role") or "customer").strip().lower()
+    if new_role not in ("admin", "customer"):
+        flash("Invalid role.", "error")
+        return redirect(url_for("admin.users"))
+
+    svc = get_service_client()
+    if not svc:
+        flash("Server not configured.", "error")
+        return redirect(url_for("admin.users"))
+
+    try:
+        svc.table("profiles").update({"role": new_role}).eq("id", user_id).execute()
+        # Mirror the role in user_metadata so future JWTs carry it.
+        try:
+            svc.auth.admin.update_user_by_id(user_id, {"user_metadata": {"role": new_role}})
+        except Exception:
+            pass
+        flash(f"Role updated to {new_role}.", "success")
+    except Exception as exc:
+        flash(f"Could not update role: {exc}", "error")
+    return redirect(url_for("admin.users"))
+
+
+@bp.route("/users/<user_id>/verify", methods=["POST"])
+@admin_required
+@require_same_origin
+def user_force_verify(user_id):
+    """Force-mark an account as email-verified — useful when a buyer can't
+    receive the OTP for any reason."""
+    svc = get_service_client()
+    if not svc:
+        flash("Server not configured.", "error")
+        return redirect(url_for("admin.users"))
+    try:
+        svc.auth.admin.update_user_by_id(user_id, {"email_confirm": True})
+        flash("Email manually marked as verified.", "success")
+    except Exception as exc:
+        flash(f"Could not verify: {exc}", "error")
+    return redirect(url_for("admin.users"))
 
 
 # ---------------- Chats ----------------

@@ -13,6 +13,7 @@
     <a href="{{ url_for('admin.product_new') }}" class="sub {{ 'active' if request.endpoint == 'admin.product_new' else '' }}">＋ Add product</a>
     <a href="{{ url_for('admin.orders') }}" class="{{ 'active' if request.endpoint and 'order' in request.endpoint else '' }}">📦 Orders</a>
     <a href="{{ url_for('admin.customers') }}" class="{{ 'active' if request.endpoint == 'admin.customers' else '' }}">💌 Customers</a>
+    <a href="{{ url_for('admin.users') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('admin.user') else '' }}">👥 Users</a>
     <a href="{{ url_for('admin.messages') }}" class="{{ 'active' if request.endpoint in ['admin.messages','admin.chats'] else '' }}">💬 Messages</a>
     <a href="{{ url_for('admin.reports') }}" class="{{ 'active' if request.endpoint == 'admin.reports' else '' }}">📈 Reports</a>
     <a href="{{ url_for('admin.settings') }}" class="{{ 'active' if request.endpoint == 'admin.settings' else '' }}">⚙️ Settings</a>

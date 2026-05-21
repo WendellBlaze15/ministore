@@ -1,11 +1,24 @@
 """Flask application factory for Papier Lab."""
 from __future__ import annotations
 
+import mimetypes
 import os
 from flask import Flask
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Force the correct MIME types globally. On some Windows Python builds the
+# default registry returns `text/plain` for `.js`, which breaks ES modules
+# (browsers refuse to execute "type=module" scripts unless they are served
+# as application/javascript or text/javascript). Without this fix, every
+# page that relies on main.js / cart.js / supabase.js silently fails — which
+# means the `data-reveal` opacity:0 trick never gets un-hidden and the page
+# looks completely blank.
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("application/javascript", ".mjs")
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("image/svg+xml", ".svg")
 
 
 def create_app() -> Flask:

@@ -51,6 +51,19 @@ def login_post():
         return _auth_error("Server is not configured for Supabase yet.",
                             template="auth/login.html", next=next_url, http=500)
 
+    # Pre-check: does this email even exist? If not, we tell the user clearly
+    # (instead of the generic "invalid email or password") so they can fix it.
+    try:
+        from app.services.supabase_client import get_service_client
+        existing = _email_exists(get_service_client(), email)
+    except Exception:
+        existing = True  # fall back to letting Supabase decide
+    if not existing:
+        return _auth_error(
+            "We don't have an account for that email yet. Try a different email or create a new account.",
+            template="auth/login.html", next=next_url, http=400, email=email,
+        )
+
     try:
         result = supa.auth.sign_in_with_password({"email": email, "password": password})
     except Exception as exc:
@@ -62,7 +75,7 @@ def login_post():
                 return redirect(url_for("auth.verify", email=email))
             return jsonify({"ok": False, "error": "email_not_verified",
                             "redirect": url_for("auth.verify", email=email)}), 400
-        msg = "Invalid email or password. Please try again."
+        msg = "Wrong password. Please try again or use 'Forgot password'."
         return _auth_error(msg, template="auth/login.html", next=next_url, http=400, email=email)
 
     sess = getattr(result, "session", None)

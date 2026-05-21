@@ -1,76 +1,218 @@
 {% extends "admin/_layout.html" %}
-{% block title %}Admin · Reports{% endblock %}
+{% block title %}Admin · Reports — Papier Lab{% endblock %}
 {% block admin %}
-<header class="row-between" data-reveal>
-  <div>
-    <span class="tag">reports</span>
-    <h1 style="margin: 6px 0 4px;">Sales & insights 📈</h1>
-    <p class="muted">Big-picture view of how the studio is doing.</p>
-  </div>
+<header data-reveal>
+  <span class="tag">reports</span>
+  <h1 style="margin: 6px 0 4px;">Sales & insights 📈</h1>
+  <p class="muted">Big-picture view of how the studio is doing. Charts refresh every 30 seconds.</p>
 </header>
 
-<section class="metrics" data-reveal>
-  <div class="metric"><b>₱{{ '%.2f' | format(m.total_revenue) }}</b><small>total revenue</small></div>
-  <div class="metric"><b>{{ m.total_orders }}</b><small>total orders</small></div>
-  <div class="metric"><b>{{ m.by_status.get('pending', 0) }}</b><small>pending</small></div>
-  <div class="metric"><b>{{ m.by_status.get('delivered', 0) }}</b><small>delivered</small></div>
+<section class="metrics metrics-grad" style="margin-top: 20px;" data-reveal>
+  <div class="metric grad-pink">
+    <div class="metric-ico">💰</div>
+    <div class="lbl">Total revenue</div>
+    <div class="val">₱{{ '{:,.0f}'.format(m.total_revenue) }}</div>
+    <div class="sub">excludes cancelled</div>
+  </div>
+  <div class="metric grad-peach">
+    <div class="metric-ico">📦</div>
+    <div class="lbl">Total orders</div>
+    <div class="val">{{ m.total_orders }}</div>
+    <div class="sub">{{ m.by_status.get('pending', 0) }} pending</div>
+  </div>
+  <div class="metric grad-lavender">
+    <div class="metric-ico">✂️</div>
+    <div class="lbl">In progress</div>
+    <div class="val">{{ m.by_status.get('preparing', 0) + m.by_status.get('shipped', 0) }}</div>
+    <div class="sub">preparing + shipped</div>
+  </div>
+  <div class="metric grad-mint">
+    <div class="metric-ico">✅</div>
+    <div class="lbl">Delivered</div>
+    <div class="val">{{ m.by_status.get('delivered', 0) }}</div>
+    <div class="sub">happy customers</div>
+  </div>
 </section>
+
+<div class="chart-grid" data-reveal>
+  <div class="panel chart-card">
+    <div class="panel-head">
+      <h3>📈 Revenue · last 14 days</h3>
+      <small class="muted live-dot"><span></span> live · 30s</small>
+    </div>
+    <div class="chart-wrap"><canvas id="revChart"></canvas></div>
+  </div>
+
+  <div class="panel chart-card">
+    <div class="panel-head">
+      <h3>🥧 Orders by status</h3>
+      <small class="muted live-dot"><span></span> live</small>
+    </div>
+    <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
+  </div>
+</div>
+
+<div class="chart-grid" data-reveal>
+  <div class="panel chart-card">
+    <div class="panel-head">
+      <h3>🛍️ Products by category</h3>
+      <small class="muted live-dot"><span></span> live</small>
+    </div>
+    <div class="chart-wrap"><canvas id="catChart"></canvas></div>
+  </div>
+
+  <div class="panel chart-card">
+    <div class="panel-head">
+      <h3>⭐ Top sellers</h3>
+      <small class="muted live-dot"><span></span> live</small>
+    </div>
+    <div class="chart-wrap"><canvas id="topChart"></canvas></div>
+  </div>
+</div>
 
 <section class="panel" data-reveal>
-  <h3>Revenue by month (last 12)</h3>
-  {% if m.by_month %}
-  <div class="bars">
-    {% set max_v = m.by_month | map(attribute='value') | max %}
-    {% for r in m.by_month %}
-      <div class="bar">
-        <div class="bar-fill" style="height: {{ (r.value / max_v * 100) if max_v else 0 }}%"></div>
-        <small>{{ r.month[-2:] }}</small>
-        <small class="muted">₱{{ '%.0f' | format(r.value) }}</small>
-      </div>
-    {% endfor %}
+  <div class="panel-head">
+    <h3>🏆 Best sellers · detail</h3>
+    <small class="muted">All-time, by units sold</small>
   </div>
+  {% if m.best_sellers %}
+    <table class="table">
+      <thead><tr><th>Product</th><th>Sold</th><th>Revenue</th></tr></thead>
+      <tbody>
+        {% for r in m.best_sellers %}
+          <tr><td>{{ r.name }}</td><td><b>{{ r.qty }}</b></td><td>₱{{ '{:,.2f}'.format(r.revenue) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   {% else %}
-  <p class="muted">No revenue data yet.</p>
+    <div class="empty"><h3>No sales yet 🌷</h3><p>When buyers check out their items will appear here.</p></div>
   {% endif %}
 </section>
+{% endblock %}
 
-<section class="grid-2-1" data-reveal>
-  <div class="panel">
-    <h3>🏆 Best sellers</h3>
-    {% if m.best_sellers %}
-      <table class="table">
-        <thead><tr><th>Product</th><th>Sold</th><th>Revenue</th></tr></thead>
-        <tbody>
-          {% for r in m.best_sellers %}
-            <tr><td>{{ r.name }}</td><td>{{ r.qty }}</td><td>₱{{ '%.2f' | format(r.revenue) }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p class="muted">No sales yet.</p>
-    {% endif %}
-  </div>
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const ENDPOINT = "{{ url_for('admin.analytics_json') }}";
+  const PINK = '#ec4f8a', PEACH = '#ff8db4', LAV = '#c8a8ff',
+        MINT = '#7fd1a9', SKY = '#7eb8ff', AMBER = '#f4b740';
+  const PALETTE = [PINK, PEACH, LAV, MINT, SKY, AMBER];
 
-  <div class="panel">
-    <h3>🛍️ Catalog by category</h3>
-    {% if m.by_category %}
-      <ul class="dotted">
-        {% for cat, n in m.by_category.items() %}
-          <li><b>{{ cat | capitalize }}</b><span class="muted">{{ n }} products</span></li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="muted">No products in the catalog.</p>
-    {% endif %}
+  const charts = {};
 
-    <h3 style="margin-top: 18px;">📦 Orders by status</h3>
-    {% if m.by_status %}
-      <ul class="dotted">
-        {% for st, n in m.by_status.items() %}
-          <li><span class="pill pill-{{ st }}">{{ st }}</span> <span class="muted">{{ n }}</span></li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-  </div>
-</section>
+  function lineChart(ctx, labels, data) {
+    const grad = ctx.createLinearGradient(0, 0, 0, 260);
+    grad.addColorStop(0, 'rgba(236, 79, 138, .35)');
+    grad.addColorStop(1, 'rgba(236, 79, 138, 0)');
+    return new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets: [{
+        label: 'Revenue ₱', data, fill: true,
+        borderColor: PINK, backgroundColor: grad,
+        pointRadius: 3, pointBackgroundColor: PINK,
+        borderWidth: 3, tension: .35,
+      }]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#7a6470' } },
+          y: { grid: { color: '#f1e8ed' }, ticks: { color: '#7a6470',
+                callback: (v) => '₱' + Number(v).toLocaleString() } },
+        },
+      },
+    });
+  }
+  function donutChart(ctx, labels, data, colors) {
+    return new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#fff', borderWidth: 3 }]},
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '64%',
+        plugins: { legend: { position: 'bottom', labels: { color: '#4a3540', font: { size: 12 }, padding: 12 } } },
+      },
+    });
+  }
+  function barChart(ctx, labels, data) {
+    return new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{
+        label: 'Qty sold', data,
+        backgroundColor: PALETTE,
+        borderRadius: 12, borderSkipped: false, maxBarThickness: 28,
+      }]},
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#f1e8ed' }, ticks: { color: '#7a6470', precision: 0 } },
+          y: { grid: { display: false }, ticks: { color: '#4a3540', font: { weight: 600 } } },
+        },
+      },
+    });
+  }
+
+  async function refresh() {
+    let payload;
+    try {
+      const r = await fetch(ENDPOINT, { credentials: 'include' });
+      payload = await r.json();
+      if (!payload.ok) return;
+    } catch (_) { return; }
+
+    const rev = payload.revenue || [];
+    const revLabels = rev.map(d => d.day);
+    const revData = rev.map(d => d.value);
+    if (!charts.rev) {
+      charts.rev = lineChart(document.getElementById('revChart').getContext('2d'), revLabels, revData);
+    } else {
+      charts.rev.data.labels = revLabels;
+      charts.rev.data.datasets[0].data = revData;
+      charts.rev.update();
+    }
+
+    const st = payload.status || {};
+    const stOrder = ['pending', 'preparing', 'shipped', 'delivered', 'cancelled'];
+    const stLabels = stOrder.filter(k => st[k]);
+    const stData = stLabels.map(k => st[k]);
+    const stColors = [AMBER, PEACH, SKY, MINT, '#cdc1c8'].slice(0, stLabels.length);
+    if (!charts.status) {
+      charts.status = donutChart(document.getElementById('statusChart').getContext('2d'), stLabels, stData, stColors);
+    } else {
+      charts.status.data.labels = stLabels;
+      charts.status.data.datasets[0].data = stData;
+      charts.status.data.datasets[0].backgroundColor = stColors;
+      charts.status.update();
+    }
+
+    const cat = payload.categories || {};
+    const catLabels = Object.keys(cat);
+    const catData = catLabels.map(k => cat[k]);
+    const catColors = PALETTE.slice(0, catLabels.length);
+    if (!charts.cat) {
+      charts.cat = donutChart(document.getElementById('catChart').getContext('2d'), catLabels, catData, catColors);
+    } else {
+      charts.cat.data.labels = catLabels;
+      charts.cat.data.datasets[0].data = catData;
+      charts.cat.data.datasets[0].backgroundColor = catColors;
+      charts.cat.update();
+    }
+
+    const top = payload.top_sellers || [];
+    const topLabels = top.map(t => t.name);
+    const topData = top.map(t => t.qty);
+    if (!charts.top) {
+      charts.top = barChart(document.getElementById('topChart').getContext('2d'), topLabels, topData);
+    } else {
+      charts.top.data.labels = topLabels;
+      charts.top.data.datasets[0].data = topData;
+      charts.top.update();
+    }
+  }
+
+  refresh();
+  setInterval(refresh, 30000);
+})();
+</script>
 {% endblock %}

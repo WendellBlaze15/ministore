@@ -54,6 +54,14 @@ for p in prods:
     r = probe(public, "GET", f"/shop/product/{p['slug']}")
     print(f"  GET  /shop/product/{p['slug']:38s} -> {r.status_code}")
 
+print("\n=== JS module MIME (fixes blank pages) ===")
+r = public.get(f"{BASE}/static/js/main.js")
+ct = r.headers.get("Content-Type", "")
+ok_mime = "javascript" in ct.lower()
+print(f"  GET  /static/js/main.js                                           -> {r.status_code}  ct={ct}  ({'OK' if ok_mime else 'BROKEN'})")
+if not ok_mime:
+    errors.append(("GET", "/static/js/main.js", r.status_code, f"MIME is {ct}, expected JS"))
+
 print("\n=== ADMIN session ===")
 admin = requests.Session()
 r = admin.post(f"{BASE}/auth/login", data={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
@@ -63,7 +71,9 @@ assert r.status_code in (302, 303), f"admin login fail: {r.status_code}"
 
 admin_pages = ["/admin/", "/admin/products", "/admin/products/new",
                "/admin/orders", "/admin/orders?status=pending", "/admin/customers",
-               "/admin/messages", "/admin/chats", "/admin/reports", "/admin/settings"]
+               "/admin/users",
+               "/admin/messages", "/admin/chats", "/admin/reports", "/admin/settings",
+               "/admin/api/analytics"]
 for p in admin_pages:
     r = probe(admin, "GET", p)
     print(f"  GET  {p:60s} -> {r.status_code}")

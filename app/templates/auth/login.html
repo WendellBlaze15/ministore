@@ -28,15 +28,38 @@
         New buyer? <a href="{{ url_for('auth.register') }}" style="color: var(--pink-600); font-weight:600;">Create a customer account →</a>
       </p>
 
-      <form id="loginForm" method="post" action="{{ url_for('auth.login_post') }}" style="margin-top: 20px;">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            {% if category == 'error' %}
+            <div class="auth-banner auth-banner-error" role="alert" data-banner>
+              <span class="ico">💔</span>
+              <div>
+                <b>Sign-in failed</b>
+                <small>{{ message }}</small>
+              </div>
+            </div>
+            {% elif category == 'info' or category == 'success' %}
+            <div class="auth-banner auth-banner-info" role="status" data-banner>
+              <span class="ico">💌</span>
+              <div><small>{{ message }}</small></div>
+            </div>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form id="loginForm" method="post" action="{{ url_for('auth.login_post') }}" novalidate style="margin-top: 20px;">
         <input type="hidden" name="next" value="{{ next or '' }}" />
-        <div class="field">
+        <div class="field" data-field="email">
           <label for="email">Email</label>
-          <input type="email" id="email" name="email" autocomplete="email" required />
+          <input type="email" id="email" name="email" autocomplete="email" required value="{{ email or '' }}" />
+          <small class="field-err" data-err></small>
         </div>
-        <div class="field">
+        <div class="field" data-field="password">
           <label for="password">Password</label>
           <input type="password" id="password" name="password" autocomplete="current-password" required />
+          <small class="field-err" data-err></small>
         </div>
         <div class="help-row">
           <label style="display:flex; gap:6px; align-items:center;">
@@ -58,10 +81,78 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+  .auth-banner {
+    display: flex; gap: 12px; align-items: center;
+    padding: 12px 14px; border-radius: 14px;
+    margin: 16px 0 0; font-size: .9rem;
+    border: 1px solid var(--border);
+    animation: bannerIn .3s ease;
+  }
+  .auth-banner b { display: block; }
+  .auth-banner small { display: block; color: var(--ink-500); }
+  .auth-banner .ico { font-size: 1.3rem; flex-shrink: 0; }
+  .auth-banner-error { background: #fff3f6; border-color: #f4c5d5; color: #b73670; }
+  .auth-banner-error small { color: #b73670; opacity: .9; }
+  .auth-banner-info { background: #fff5f8; border-color: var(--pink-200); color: var(--pink-700); }
+  @keyframes bannerIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+  .field-err { display: none; color: #b73670; font-size: .82rem; margin-top: 4px; font-weight: 500; }
+  .field.invalid input { border-color: #e85a86 !important; background: #fff3f6 !important; box-shadow: 0 0 0 3px rgba(232, 90, 134, .18) !important; }
+  .field.invalid .field-err { display: block; }
+</style>
 <script>
-  document.getElementById('loginForm').addEventListener('submit', (e) => {
-    const btn = e.target.querySelector('button[type=submit]');
-    btn.disabled = true; btn.textContent = 'Signing in…';
-  });
+  (function () {
+    const form = document.getElementById('loginForm');
+    const banners = document.querySelectorAll('[data-banner]');
+
+    function setError(name, message) {
+      const wrap = form.querySelector(`[data-field="${name}"]`);
+      if (!wrap) return;
+      wrap.classList.add('invalid');
+      const err = wrap.querySelector('[data-err]');
+      if (err) err.textContent = message;
+    }
+    function clearError(name) {
+      const wrap = form.querySelector(`[data-field="${name}"]`);
+      if (!wrap) return;
+      wrap.classList.remove('invalid');
+      const err = wrap.querySelector('[data-err]');
+      if (err) err.textContent = '';
+    }
+
+    // If the server flashed an error, also highlight the fields visually.
+    if (banners.length) {
+      form.querySelector('[data-field="email"]')?.classList.add('invalid');
+      form.querySelector('[data-field="password"]')?.classList.add('invalid');
+      const pwErr = form.querySelector('[data-field="password"] [data-err]');
+      if (pwErr) pwErr.textContent = 'Check the email and password and try again.';
+    }
+
+    // Clear inline errors as the user starts typing.
+    ['email', 'password'].forEach((name) => {
+      form.querySelector(`[data-field="${name}"] input`)?.addEventListener('input', () => clearError(name));
+    });
+
+    form.addEventListener('submit', (e) => {
+      const email = form.querySelector('#email').value.trim();
+      const password = form.querySelector('#password').value;
+      let bad = false;
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setError('email', 'Please enter a valid email address.');
+        bad = true;
+      }
+      if (!password || password.length < 8) {
+        setError('password', 'Password must be at least 8 characters.');
+        bad = true;
+      }
+      if (bad) {
+        e.preventDefault();
+        return;
+      }
+      const btn = e.target.querySelector('button[type=submit]');
+      btn.disabled = true; btn.textContent = 'Signing in…';
+    });
+  })();
 </script>
 {% endblock %}
