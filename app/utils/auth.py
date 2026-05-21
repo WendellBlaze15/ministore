@@ -49,26 +49,62 @@ def admin_required(view):
     return wrapper
 
 
-def store_user_in_session(user_obj: dict, access_token: str, refresh_token: str) -> None:
-    """Persist Supabase user + tokens to the Flask session.
+def _resolve_role(email: str, metadata: dict, existing_role: Optional[str]) -> str:
+    """Resolve the user's effective role.
 
-    Role resolution priority:
-      1. ``user_metadata.role`` set in Supabase (e.g. "admin")
-      2. Email matches ``ADMIN_EMAIL`` env var -> admin
-      3. Otherwise -> customer
+    Precedence:
+      1. ``user_metadata.role == 'admin'``      -> admin (set by an admin)
+      2. Email matches ``ADMIN_EMAIL`` env var   -> admin (initial bootstrap)
+      3. Existing role on the profile row        -> keep it (admins set via SQL)
+      4. Default                                 -> 'customer'
     """
+    if (metadata or {}).get("role") == "admin":
+        return "admin"
+    admin_email = (current_app.config.get("ADMIN_EMAIL") or "").lower()
+    if admin_email and (email or "").lower() == admin_email:
+        return "admin"
+    if existing_role in ("admin", "customer"):
+        return existing_role
+    return "customer"
+
+
+def _fetch_existing_profile(user_id: str) -> dict:
+    svc = get_service_client()
+    if not svc:
+        return {}
+    try:
+        rows = (
+            svc.table("profiles")
+            .select("role, full_name, email")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        ).data or []
+        return rows[0] if rows else {}
+    except Exception:
+        return {}
+
+
+def store_user_in_session(user_obj: dict, access_token: str, refresh_token: str) -> None:
+    """Persist Supabase user + tokens to the Flask session."""
     metadata = user_obj.get("user_metadata") or {}
-    email = user_obj.get("email", "")
-    role = metadata.get("role")
-    if not role:
-        admin_email = (current_app.config.get("ADMIN_EMAIL") or "").lower()
-        role = "admin" if admin_email and email.lower() == admin_email else "customer"
+    email = user_obj.get("email") or ""
+    user_id = user_obj.get("id") or ""
+
+    existing = _fetch_existing_profile(user_id)
+    role = _resolve_role(email, metadata, existing.get("role"))
+
+    name = (
+        existing.get("full_name")
+        or metadata.get("full_name")
+        or (email.split("@")[0] if email else "Friend")
+    )
 
     session.permanent = True
     session["user"] = {
-        "id": user_obj.get("id"),
+        "id": user_id,
         "email": email,
-        "name": metadata.get("full_name") or email.split("@")[0],
+        "name": name,
         "role": role,
     }
     session["access_token"] = access_token
@@ -81,19 +117,41 @@ def clear_user_session() -> None:
 
 
 def ensure_profile_row(user_id: str, email: str, full_name: str, role: str) -> None:
-    """Mirror the auth user into our ``profiles`` table (idempotent)."""
+    """Mirror the auth user into our ``profiles`` table (idempotent).
+
+    Only writes fields that actually need updating, so we don't trample
+    a user-edited full_name or a manually-set role.
+    """
     svc = get_service_client()
-    if not svc:
+    if not svc or not user_id:
         return
     try:
-        svc.table("profiles").upsert(
+        existing = (
+            svc.table("profiles")
+            .select("id, email, full_name, role")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        ).data or []
+        if existing:
+            current = existing[0]
+            patch = {}
+            if (current.get("email") or "") != (email or ""):
+                patch["email"] = email
+            if not (current.get("full_name") or "") and full_name:
+                patch["full_name"] = full_name
+            if role == "admin" and current.get("role") != "admin":
+                patch["role"] = "admin"
+            if patch:
+                svc.table("profiles").update(patch).eq("id", user_id).execute()
+            return
+        svc.table("profiles").insert(
             {
                 "id": user_id,
                 "email": email,
                 "full_name": full_name,
                 "role": role,
-            },
-            on_conflict="id",
+            }
         ).execute()
     except Exception as exc:  # pragma: no cover - best-effort sync
         current_app.logger.warning("ensure_profile_row failed: %s", exc)
