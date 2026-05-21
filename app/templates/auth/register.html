@@ -26,42 +26,64 @@
       <h1>Hi! Let's get to know you 🌸</h1>
       <p class="muted">Already a pen pal? <a href="{{ url_for('auth.login') }}" style="color: var(--pink-600); font-weight:600;">Sign in →</a></p>
 
-      <form id="registerForm" style="margin-top: 20px;">
+      <form id="registerForm" method="post" action="{{ url_for('auth.register_post') }}" style="margin-top: 20px;">
         <div class="field">
           <label>Full name <span style="color: var(--pink-600)">*</span></label>
-          <input type="text" id="name" required placeholder="Andrea Cruz" autocomplete="name" />
+          <input type="text" id="name" name="full_name" required placeholder="Andrea Cruz" autocomplete="name" />
         </div>
         <div class="field">
           <label>Email address <span style="color: var(--pink-600)">*</span></label>
-          <input type="email" id="email" required placeholder="hello@papierlab.shop" autocomplete="email" />
+          <input type="email" id="email" name="email" required placeholder="hello@papierlab.shop" autocomplete="email" />
         </div>
         <div class="field">
           <label>Username <small class="muted">(optional)</small></label>
-          <input type="text" id="username" placeholder="andrea_papier" autocomplete="username"
+          <input type="text" id="username" name="username" placeholder="andrea_papier" autocomplete="username"
                  pattern="^[A-Za-z0-9_.\-]{3,30}$"
                  title="3-30 letters, numbers, dot, dash, or underscore" />
           <small class="help">Used for chat & order notes. Leave blank to use your full name.</small>
         </div>
         <div class="field">
           <label>Contact number <span style="color: var(--pink-600)">*</span></label>
-          <input type="tel" id="contact" required placeholder="09XX XXX XXXX" autocomplete="tel"
+          <input type="tel" id="contact" name="contact_number" required placeholder="09XX XXX XXXX" autocomplete="tel"
                  pattern="^[0-9 +\-()]{7,20}$" title="Digits, spaces, +, -, ( ) only" />
         </div>
-        <div class="field">
-          <label>Delivery address <small class="muted">(optional)</small></label>
-          <textarea id="address" placeholder="House #, street, barangay, city, province, ZIP" rows="2"
-                    autocomplete="street-address"></textarea>
-          <small class="help">You can fill this in later at checkout — it saves you time later. 🌸</small>
-        </div>
+
+        <fieldset class="ph-address" style="border:1px dashed var(--pink-200); border-radius:14px; padding:14px; margin: 10px 0;">
+          <legend style="padding: 0 8px; color: var(--pink-700); font-weight: 600;">📍 Delivery address <small class="muted">(optional)</small></legend>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="field">
+              <label>Region</label>
+              <select id="region" name="region" data-ph="region"><option value="">Select region…</option></select>
+            </div>
+            <div class="field">
+              <label>Province</label>
+              <select id="province" name="province" data-ph="province"><option value="">Select region first</option></select>
+            </div>
+            <div class="field">
+              <label>City / Municipality</label>
+              <select id="city" name="city" data-ph="city"><option value="">Select province first</option></select>
+            </div>
+            <div class="field">
+              <label>Barangay</label>
+              <select id="barangay" name="barangay" data-ph="barangay"><option value="">Select city first</option></select>
+            </div>
+          </div>
+          <div class="field" style="margin-top: 6px;">
+            <label>House # / Street / Subdivision</label>
+            <input type="text" id="address" name="address" placeholder="e.g. 123 Rosal St., Mabolo Heights" autocomplete="street-address" />
+            <small class="help">Leave the dropdowns blank kung gusto mong ifill-up sa checkout na lang. 🌸</small>
+          </div>
+        </fieldset>
+
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div class="field">
             <label>Password <span style="color: var(--pink-600)">*</span></label>
-            <input type="password" id="password" minlength="8" required placeholder="At least 8 characters"
+            <input type="password" id="password" name="password" minlength="8" required placeholder="At least 8 characters"
                    autocomplete="new-password" />
           </div>
           <div class="field">
             <label>Confirm password <span style="color: var(--pink-600)">*</span></label>
-            <input type="password" id="confirm_password" minlength="8" required placeholder="Repeat password"
+            <input type="password" id="confirm_password" name="confirm_password" minlength="8" required placeholder="Repeat password"
                    autocomplete="new-password" />
           </div>
         </div>
@@ -77,63 +99,19 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="module">
-  import { supabase, syncSessionToServer } from "{{ url_for('static', filename='js/supabase.js') }}";
-  import { toast } from "{{ url_for('static', filename='js/main.js') }}";
-
-  document.getElementById('registerForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!supabase) { toast('Supabase not configured.', { type: 'error' }); return; }
-
-    const name             = document.getElementById('name').value.trim();
-    const email            = document.getElementById('email').value.trim();
-    const username         = document.getElementById('username').value.trim();
-    const contact          = document.getElementById('contact').value.trim();
-    const address          = document.getElementById('address').value.trim();
-    const password         = document.getElementById('password').value;
-    const confirm_password = document.getElementById('confirm_password').value;
-
-    if (password !== confirm_password) {
-      toast("Passwords don't match.", { type: 'error' });
+<script src="{{ url_for('static', filename='js/address-ph.js') }}" defer></script>
+<script>
+  // Client-side guard: confirm passwords match before submit (server checks too).
+  document.getElementById('registerForm').addEventListener('submit', (e) => {
+    const pw = document.getElementById('password').value;
+    const cf = document.getElementById('confirm_password').value;
+    if (pw !== cf) {
+      e.preventDefault();
+      window.toast && window.toast("Passwords don't match.", { type: 'error' });
       return;
     }
-
     const btn = e.target.querySelector('button[type=submit]');
     btn.disabled = true; btn.textContent = 'Creating…';
-
-    const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { full_name: name, username, contact_number: contact, address } },
-    });
-    if (error) {
-      toast(error.message, { type: 'error' });
-      btn.disabled = false; btn.textContent = 'Create my account';
-      return;
-    }
-    if (!data.session) {
-      // Email confirmation is enabled. Tell user, but also save the rest
-      // of the fields by hitting our backend with a "pending" payload —
-      // they'll be merged in once they confirm and sign in.
-      toast('Check your email to confirm your account 💌', { type: 'info' });
-      btn.disabled = false; btn.textContent = 'Create my account';
-      return;
-    }
-
-    await syncSessionToServer();
-
-    // Persist the extra profile fields server-side.
-    try {
-      await fetch("{{ url_for('auth.complete_profile') }}", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          full_name: name, username, contact_number: contact, address,
-        }),
-      });
-    } catch (_) { /* non-fatal */ }
-
-    toast('Welcome to Papier Lab! 🌸', { type: 'success' });
-    window.location.href = '/';
   });
 </script>
 {% endblock %}

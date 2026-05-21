@@ -1,0 +1,50 @@
+{% extends "account/_layout.html" %}
+{% block title %}Profile — Papier Lab{% endblock %}
+
+{% block account %}
+<header class="acct-head" data-reveal>
+  <span class="tag">profile</span>
+  <h1>Your details ✨</h1>
+  <p class="muted">Update your name, contact info, and delivery address.</p>
+</header>
+
+<section class="acct-section" data-reveal>
+  <form method="post" action="{{ url_for('account.profile_save') }}" class="acct-form">
+    <div class="field">
+      <label>Full name</label>
+      <input type="text" name="full_name" value="{{ profile.full_name or '' }}" autocomplete="name" />
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div class="field">
+        <label>Username</label>
+        <input type="text" name="username" value="{{ profile.username or '' }}"
+               pattern="^[A-Za-z0-9_.\-]{3,30}$" title="3-30 letters, numbers, dot, dash, or underscore" />
+      </div>
+      <div class="field">
+        <label>Contact number</label>
+        <input type="tel" name="contact_number" value="{{ profile.contact_number or '' }}"
+               pattern="^[0-9 +\-()]{7,20}$" autocomplete="tel" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Email</label>
+      <input type="email" value="{{ profile.email or session.user.email }}" disabled />
+      <small class="help">Email is locked. <a href="{{ url_for('auth.forgot') }}">Need to reset password?</a></small>
+    </div>
+
+    <div class="field">
+      <label>Delivery address</label>
+      <textarea name="address" rows="3"
+                placeholder="House #, street, barangay, city, province, ZIP">{{ profile.address or '' }}</textarea>
+      <small class="help">Saves you time at checkout. Want a PH-address picker? Use it during registration.</small>
+    </div>
+
+    <div style="display:flex; gap: 10px; margin-top: 8px;">
+      <button class="btn btn-primary" type="submit">Save changes</button>
+      <a class="btn btn-secondary" href="{{ url_for('auth.forgot') }}">Reset password</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

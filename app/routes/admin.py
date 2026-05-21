@@ -349,8 +349,9 @@ def customers():
 # ---------------- Chats ----------------
 
 @bp.route("/chats")
+@bp.route("/messages")
 @admin_required
-def chats():
+def messages():
     svc = get_service_client()
     rows = []
     if svc:
@@ -371,8 +372,115 @@ def chats():
                     .execute()
                 ).data or []
                 profiles_by_id = {p["id"]: p for p in profs}
-            for r in rows:
-                r["profiles"] = profiles_by_id.get(r.get("user_id")) or {}
+
+            # Attach last message snippet + unread count for each chat.
+            try:
+                msgs = (
+                    svc.table("messages")
+                    .select("chat_id, body, sender_role, seen, created_at")
+                    .order("created_at", desc=True)
+                    .limit(1000)
+                    .execute()
+                ).data or []
+                last_by_chat: dict[str, dict] = {}
+                unread_by_chat: dict[str, int] = {}
+                for m in msgs:
+                    cid = m.get("chat_id")
+                    if not cid: continue
+                    if cid not in last_by_chat:
+                        last_by_chat[cid] = m
+                    if m.get("sender_role") == "customer" and not m.get("seen"):
+                        unread_by_chat[cid] = unread_by_chat.get(cid, 0) + 1
+                for r in rows:
+                    r["profiles"] = profiles_by_id.get(r.get("user_id")) or {}
+                    r["last_message"] = last_by_chat.get(r["id"]) or {}
+                    r["unread"] = unread_by_chat.get(r["id"], 0)
+            except Exception:
+                for r in rows:
+                    r["profiles"] = profiles_by_id.get(r.get("user_id")) or {}
+                    r["last_message"] = {}
+                    r["unread"] = 0
         except Exception:
             rows = []
-    return render_template("admin/chats.html", chats=rows)
+    return render_template("admin/messages.html", chats=rows)
+
+
+# ---------------- Reports ----------------
+
+@bp.route("/reports")
+@admin_required
+def reports():
+    svc = get_service_client()
+    metrics: dict = {"total_revenue": 0.0, "total_orders": 0, "best_sellers": [], "by_category": {}, "by_status": {}, "by_month": []}
+    if svc:
+        try:
+            orders = (
+                svc.table("orders").select("id, total, status, created_at").execute()
+            ).data or []
+            metrics["total_orders"] = len(orders)
+            metrics["total_revenue"] = sum(float(o["total"]) for o in orders if o["status"] != "cancelled")
+            by_status: dict[str, int] = {}
+            by_month: dict[str, float] = {}
+            for o in orders:
+                by_status[o["status"]] = by_status.get(o["status"], 0) + 1
+                dt = _to_dt(o["created_at"])
+                if dt and o["status"] != "cancelled":
+                    key = dt.strftime("%Y-%m")
+                    by_month[key] = by_month.get(key, 0) + float(o["total"])
+            metrics["by_status"] = by_status
+            metrics["by_month"] = [{"month": k, "value": round(v, 2)} for k, v in sorted(by_month.items())[-12:]]
+
+            items = (
+                svc.table("order_items").select("product_id, name, quantity, unit_price").execute()
+            ).data or []
+            ranking: dict[str, dict] = {}
+            for it in items:
+                key = it.get("product_id") or it.get("name", "Unknown")
+                row = ranking.setdefault(key, {"name": it.get("name", "Unknown"), "qty": 0, "revenue": 0.0})
+                qty = int(it.get("quantity") or 0)
+                row["qty"] += qty
+                row["revenue"] += qty * float(it.get("unit_price") or 0)
+            best = sorted(ranking.values(), key=lambda r: r["qty"], reverse=True)[:10]
+            metrics["best_sellers"] = best
+
+            prods = (svc.table("products").select("category, stock").execute()).data or []
+            by_cat: dict[str, int] = {}
+            for p in prods:
+                by_cat[p.get("category", "other")] = by_cat.get(p.get("category", "other"), 0) + 1
+            metrics["by_category"] = by_cat
+        except Exception as exc:
+            current_app.logger.warning("reports failed: %s", exc)
+
+    return render_template("admin/reports.html", m=metrics)
+
+
+# ---------------- Settings ----------------
+
+@bp.route("/settings", methods=["GET", "POST"])
+@admin_required
+@require_same_origin
+def settings():
+    user = current_user()
+    svc = get_service_client()
+    profile = {}
+    if svc and user:
+        try:
+            profile = (svc.table("profiles").select("*").eq("id", user["id"]).single().execute()).data or {}
+        except Exception:
+            pass
+
+    if request.method == "POST":
+        full_name = (request.form.get("full_name") or "").strip()[:120]
+        contact = (request.form.get("contact_number") or "").strip()[:32]
+        if svc and user and (full_name or contact):
+            patch = {}
+            if full_name: patch["full_name"] = full_name
+            if contact:   patch["contact_number"] = contact
+            try:
+                svc.table("profiles").update(patch).eq("id", user["id"]).execute()
+                flash("Settings saved.", "success")
+            except Exception as exc:
+                flash(f"Could not save: {exc}", "error")
+        return redirect(url_for("admin.settings"))
+
+    return render_template("admin/settings.html", profile=profile)

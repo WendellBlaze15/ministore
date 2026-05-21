@@ -1,0 +1,41 @@
+{% extends "account/_layout.html" %}
+{% block title %}Track order — Papier Lab{% endblock %}
+
+{% block account %}
+<header class="acct-head" data-reveal>
+  <span class="tag">tracking</span>
+  <h1>Where's my parcel? 🚚</h1>
+  <p class="muted">Pick an active order or paste a tracking code to see its journey.</p>
+</header>
+
+<section class="acct-section" data-reveal>
+  <h3 style="margin-top:0">Active orders</h3>
+  {% if active_orders %}
+    <div class="acct-table">
+      <div class="acct-tr head"><span>Order</span><span>Date</span><span>Status</span><span>Total</span><span>Action</span></div>
+      {% for o in active_orders %}
+      <div class="acct-tr">
+        <span>#{{ o.id[:8] }}</span>
+        <span>{{ o.created_at[:10] }}</span>
+        <span><span class="pill pill-{{ o.status }}">{{ o.status }}</span></span>
+        <span><b>₱{{ '%.2f' | format(o.total) }}</b></span>
+        <span><a class="btn btn-sm btn-primary" href="{{ url_for('orders.track', order_id=o.id) }}">Track →</a></span>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      <h3>Nothing in transit ♡</h3>
+      <p>All caught up! Place a new order from the shop, and it'll appear here.</p>
+    </div>
+  {% endif %}
+</section>
+
+<section class="acct-section" data-reveal>
+  <h3>Track by ID</h3>
+  <form onsubmit="event.preventDefault(); const id = this.code.value.trim(); if (id) window.location.href = '/orders/' + encodeURIComponent(id);" class="row" style="gap: 8px;">
+    <input type="text" name="code" placeholder="Paste your order ID (e.g. 1f3a-4b…)" required style="flex:1;" />
+    <button class="btn btn-primary" type="submit">Track →</button>
+  </form>
+</section>
+{% endblock %}

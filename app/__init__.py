@@ -38,6 +38,7 @@ def create_app() -> Flask:
     from .routes.orders import bp as orders_bp
     from .routes.chat import bp as chat_bp
     from .routes.admin import bp as admin_bp
+    from .routes.account import bp as account_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix="/auth")
@@ -46,6 +47,7 @@ def create_app() -> Flask:
     app.register_blueprint(orders_bp, url_prefix="/orders")
     app.register_blueprint(chat_bp, url_prefix="/chat")
     app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(account_bp, url_prefix="/account")
 
     # Friendly error pages
     from .routes.errors import register_error_handlers

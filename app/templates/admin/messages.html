@@ -1,0 +1,51 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Admin · Messages{% endblock %}
+{% block admin %}
+<header class="row-between" data-reveal>
+  <div>
+    <span class="tag">messages</span>
+    <h1 style="margin: 6px 0 4px;">Customer conversations 💬</h1>
+    <p class="muted">All chats from your buyers in one inbox.</p>
+  </div>
+  <div class="muted">{{ chats | length }} {{ 'chat' if chats|length == 1 else 'chats' }}</div>
+</header>
+
+<div class="panel" style="margin-top: 16px;" data-reveal>
+  {% if chats %}
+  <table class="table inbox">
+    <thead>
+      <tr><th>Customer</th><th>Last message</th><th>Status</th><th>Started</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for c in chats %}
+      <tr class="{% if c.unread %}row-unread{% endif %}">
+        <td>
+          <div style="display:flex; align-items:center; gap: 10px;">
+            <span class="avatar avatar-sm">{{ ((c.profiles or {}).full_name or (c.profiles or {}).email or 'C')[:1] | upper }}</span>
+            <div>
+              <b>{{ (c.profiles or {}).full_name or 'Customer' }}</b>
+              <small class="muted">{{ (c.profiles or {}).email or '—' }}</small>
+            </div>
+          </div>
+        </td>
+        <td class="snippet">
+          {{ (c.last_message.body or 'No messages yet')[:90] }}{% if (c.last_message.body or '')|length > 90 %}…{% endif %}
+        </td>
+        <td>
+          {% if c.unread %}
+            <span class="pill pill-pending">{{ c.unread }} new</span>
+          {% else %}
+            <span class="muted">all read</span>
+          {% endif %}
+        </td>
+        <td>{{ c.created_at[:10] }}</td>
+        <td><a class="btn btn-sm btn-primary" href="{{ url_for('chat.admin_room', chat_id=c.id) }}">Open →</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty"><h3>No conversations yet 🌷</h3><p>Customers can start a chat from their account page.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

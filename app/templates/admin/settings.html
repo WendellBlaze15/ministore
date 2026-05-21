@@ -1,0 +1,50 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Admin · Settings{% endblock %}
+{% block admin %}
+<header data-reveal>
+  <span class="tag">settings</span>
+  <h1 style="margin: 6px 0 4px;">Studio settings ⚙️</h1>
+  <p class="muted">Update your admin contact info and storefront details.</p>
+</header>
+
+<section class="panel" data-reveal>
+  <h3>Admin profile</h3>
+  <form method="post" action="{{ url_for('admin.settings') }}" class="acct-form">
+    <div class="field">
+      <label>Display name</label>
+      <input type="text" name="full_name" value="{{ profile.full_name or session.user.name }}" />
+    </div>
+    <div class="field">
+      <label>Contact number</label>
+      <input type="tel" name="contact_number" value="{{ profile.contact_number or '' }}" pattern="^[0-9 +\-()]{7,20}$" />
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" value="{{ session.user.email }}" disabled />
+      <small class="help">Admin email is locked. To change it, ping Supabase directly.</small>
+    </div>
+    <button class="btn btn-primary" type="submit">Save settings</button>
+  </form>
+</section>
+
+<section class="panel" data-reveal>
+  <h3>Storefront</h3>
+  <ul class="dotted">
+    <li><b>Site name</b><span class="muted">{{ APP_NAME }}</span></li>
+    <li><b>Tagline</b><span class="muted">{{ APP_TAGLINE }}</span></li>
+    <li><b>Supabase project</b><span class="muted">{{ SUPABASE_URL.split('//')[1].split('.')[0] if SUPABASE_URL else 'not set' }}</span></li>
+    <li><b>Storage bucket</b><span class="muted">product-images</span></li>
+  </ul>
+  <p class="muted" style="margin-top: 14px;">To edit branding, update <code>app/templates</code> and the logo at <code>app/static/img/logo.png</code>.</p>
+</section>
+
+<section class="panel" data-reveal>
+  <h3>Security</h3>
+  <ul class="dotted">
+    <li><b>Password reset OTP</b><span class="muted">enabled · 6-digit hashed code via Gmail SMTP</span></li>
+    <li><b>Sessions</b><span class="muted">HttpOnly · SameSite=Lax · Secure in production</span></li>
+    <li><b>CSRF</b><span class="muted">same-origin guard on state-changing endpoints</span></li>
+    <li><b>RLS</b><span class="muted">enabled on profiles, orders, chats, messages, wishlists</span></li>
+  </ul>
+</section>
+{% endblock %}

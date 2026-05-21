@@ -1,0 +1,76 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Admin · Reports{% endblock %}
+{% block admin %}
+<header class="row-between" data-reveal>
+  <div>
+    <span class="tag">reports</span>
+    <h1 style="margin: 6px 0 4px;">Sales & insights 📈</h1>
+    <p class="muted">Big-picture view of how the studio is doing.</p>
+  </div>
+</header>
+
+<section class="metrics" data-reveal>
+  <div class="metric"><b>₱{{ '%.2f' | format(m.total_revenue) }}</b><small>total revenue</small></div>
+  <div class="metric"><b>{{ m.total_orders }}</b><small>total orders</small></div>
+  <div class="metric"><b>{{ m.by_status.get('pending', 0) }}</b><small>pending</small></div>
+  <div class="metric"><b>{{ m.by_status.get('delivered', 0) }}</b><small>delivered</small></div>
+</section>
+
+<section class="panel" data-reveal>
+  <h3>Revenue by month (last 12)</h3>
+  {% if m.by_month %}
+  <div class="bars">
+    {% set max_v = m.by_month | map(attribute='value') | max %}
+    {% for r in m.by_month %}
+      <div class="bar">
+        <div class="bar-fill" style="height: {{ (r.value / max_v * 100) if max_v else 0 }}%"></div>
+        <small>{{ r.month[-2:] }}</small>
+        <small class="muted">₱{{ '%.0f' | format(r.value) }}</small>
+      </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">No revenue data yet.</p>
+  {% endif %}
+</section>
+
+<section class="grid-2-1" data-reveal>
+  <div class="panel">
+    <h3>🏆 Best sellers</h3>
+    {% if m.best_sellers %}
+      <table class="table">
+        <thead><tr><th>Product</th><th>Sold</th><th>Revenue</th></tr></thead>
+        <tbody>
+          {% for r in m.best_sellers %}
+            <tr><td>{{ r.name }}</td><td>{{ r.qty }}</td><td>₱{{ '%.2f' | format(r.revenue) }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">No sales yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h3>🛍️ Catalog by category</h3>
+    {% if m.by_category %}
+      <ul class="dotted">
+        {% for cat, n in m.by_category.items() %}
+          <li><b>{{ cat | capitalize }}</b><span class="muted">{{ n }} products</span></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No products in the catalog.</p>
+    {% endif %}
+
+    <h3 style="margin-top: 18px;">📦 Orders by status</h3>
+    {% if m.by_status %}
+      <ul class="dotted">
+        {% for st, n in m.by_status.items() %}
+          <li><span class="pill pill-{{ st }}">{{ st }}</span> <span class="muted">{{ n }}</span></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

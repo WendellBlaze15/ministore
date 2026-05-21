@@ -1,0 +1,61 @@
+{% extends "account/_layout.html" %}
+{% block title %}My Account — Papier Lab{% endblock %}
+
+{% block account %}
+<header class="acct-head" data-reveal>
+  <span class="tag">my account</span>
+  <h1>Hi {{ (session.user.name or 'friend').split(' ')[0] }}! 🌸</h1>
+  <p class="muted">Welcome back. Here's a peek at your latest orders and goodies.</p>
+</header>
+
+<section class="acct-stats" data-reveal>
+  <div class="acct-card">
+    <div class="ico">📦</div>
+    <b>{{ recent_orders | length }}</b>
+    <small class="muted">recent orders</small>
+  </div>
+  <div class="acct-card">
+    <div class="ico">💖</div>
+    <b>{{ wishlist_count }}</b>
+    <small class="muted">in your wishlist</small>
+  </div>
+  <div class="acct-card">
+    <div class="ico">📍</div>
+    <b>{{ (profile.address[:24] + '…') if (profile.address and profile.address|length > 24) else (profile.address or '—') }}</b>
+    <small class="muted">delivery address</small>
+  </div>
+  <div class="acct-card">
+    <div class="ico">📞</div>
+    <b>{{ profile.contact_number or '—' }}</b>
+    <small class="muted">contact number</small>
+  </div>
+</section>
+
+<section class="acct-section" data-reveal>
+  <div class="row-between">
+    <h2><small>recent orders</small>The latest deliveries</h2>
+    <a class="btn btn-secondary" href="{{ url_for('account.orders') }}">See all →</a>
+  </div>
+  {% if recent_orders %}
+  <div class="acct-table">
+    <div class="acct-tr head">
+      <span>Order</span><span>Date</span><span>Payment</span><span>Status</span><span>Total</span>
+    </div>
+    {% for o in recent_orders %}
+    <a href="{{ url_for('orders.track', order_id=o.id) }}" class="acct-tr">
+      <span>#{{ o.id[:8] }}</span>
+      <span>{{ o.created_at[:10] }}</span>
+      <span>{{ o.payment_method or '—' }}</span>
+      <span><span class="pill pill-{{ o.status }}">{{ o.status }}</span></span>
+      <span><b>₱{{ '%.2f' | format(o.total) }}</b></span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">
+    <h3>No orders yet 🌷</h3>
+    <p>Your first order will live here. <a href="{{ url_for('products.shop') }}" style="color:var(--pink-600);font-weight:600">Browse the shop →</a></p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

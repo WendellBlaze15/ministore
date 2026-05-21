@@ -12,11 +12,13 @@
       <a href="{{ url_for('main.about') }}" class="{{ 'active' if request.endpoint == 'main.about' else '' }}">About</a>
       {% if user %}
         {% if user.role == 'admin' %}
-          <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('admin.') else '' }}">Admin</a>
+          <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' else '' }}">Admin</a>
+          <a href="{{ url_for('admin.products') }}" class="{{ 'active' if request.endpoint and 'product' in request.endpoint and request.endpoint.startswith('admin.') else '' }}">Products</a>
           <a href="{{ url_for('admin.orders') }}" class="{{ 'active' if request.endpoint == 'admin.orders' else '' }}">Orders</a>
-          <a href="{{ url_for('admin.chats') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('admin.') and 'chat' in request.endpoint else '' }}">Chats</a>
+          <a href="{{ url_for('admin.messages') }}" class="{{ 'active' if request.endpoint and 'chat' in request.endpoint and request.endpoint.startswith('admin.') or request.endpoint == 'admin.messages' else '' }}">Messages</a>
         {% else %}
-          <a href="{{ url_for('orders.my_orders') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('orders.') else '' }}">My Orders</a>
+          <a href="{{ url_for('account.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('account.') else '' }}">My Account</a>
+          <a href="{{ url_for('account.orders') }}" class="{{ 'active' if request.endpoint in ['account.orders','orders.my_orders'] else '' }}">My Orders</a>
           <a href="{{ url_for('chat.room') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('chat.') else '' }}">Chat</a>
         {% endif %}
       {% endif %}

@@ -1,0 +1,56 @@
+{% extends "account/_layout.html" %}
+{% block title %}Wishlist — Papier Lab{% endblock %}
+
+{% block account %}
+<header class="acct-head" data-reveal>
+  <span class="tag">wishlist</span>
+  <h1>Your saved goodies 💖</h1>
+  <p class="muted">Little things you're saving for later. Tap any to add to cart!</p>
+</header>
+
+<section class="acct-section" data-reveal>
+  {% if items %}
+  <div class="products">
+    {% for p in items %}
+    <article class="product-card">
+      <a class="product-img" href="{{ url_for('products.detail', slug=p.slug) }}">
+        {% if p.cover_image %}<img src="{{ p.cover_image }}" alt="{{ p.name }}" />{% else %}<div class="img-placeholder">🌸</div>{% endif %}
+      </a>
+      <div class="product-body">
+        <h4>{{ p.name }}</h4>
+        <p class="price">₱{{ '%.2f' | format(p.price) }}</p>
+        <div style="display:flex; gap:8px;">
+          <a class="btn btn-sm btn-primary" href="{{ url_for('products.detail', slug=p.slug) }}">View →</a>
+          <button class="btn btn-sm btn-ghost" data-wish-remove data-product-id="{{ p.id }}">Remove 💔</button>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">
+    <h3>Your wishlist is empty 🌷</h3>
+    <p>Hit the heart icon on any product to save it here.</p>
+    <a class="btn btn-primary" href="{{ url_for('products.shop') }}">Browse the shop →</a>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-wish-remove]');
+    if (!btn) return;
+    const pid = btn.dataset.productId;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      await fetch("{{ url_for('account.wishlist_toggle') }}", {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: pid }),
+      });
+      btn.closest('article')?.remove();
+    } catch (err) { btn.disabled = false; btn.textContent = 'Remove 💔'; }
+  });
+</script>
+{% endblock %}
