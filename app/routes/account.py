@@ -327,6 +327,26 @@ def delete_account():
 _UUID_RE = __import__("re").compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
+@bp.route("/wishlist/ids", methods=["GET"])
+@login_required
+def wishlist_ids():
+    """Return the product_ids the current user has wishlisted. Lets
+    product cards paint the filled heart on first paint without making
+    one request per card."""
+    user = current_user()
+    svc = get_service_client()
+    if not svc:
+        return jsonify({"ok": True, "ids": []})
+    try:
+        rows = (
+            svc.table("wishlists").select("product_id")
+            .eq("user_id", user["id"]).execute()
+        ).data or []
+        return jsonify({"ok": True, "ids": [r["product_id"] for r in rows if r.get("product_id")]})
+    except Exception:
+        return jsonify({"ok": True, "ids": []})
+
+
 @bp.route("/wishlist/toggle", methods=["POST"])
 @login_required
 @require_same_origin

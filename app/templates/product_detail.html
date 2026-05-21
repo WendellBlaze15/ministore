@@ -74,6 +74,16 @@
         </button>
         <button class="btn btn-secondary" id="pdpBuy">Buy now</button>
       </div>
+
+      <div style="margin-top: 14px;">
+        <button type="button" class="wishlist-pill" data-wishlist
+                data-product-id="{{ product.id }}"
+                aria-pressed="false">
+          <span class="heart-off">♡</span>
+          <span class="heart-on">♥</span>
+          <span class="wishlist-label">Save to wishlist</span>
+        </button>
+      </div>
       {% endif %}
 
       <div class="divider"></div>
@@ -82,6 +92,112 @@
         <p class="muted" style="margin-top: 8px;">Packed in 2–3 days. Ships nationwide via J&T or LBC. Bookmarks are laminated; keep keychains away from harsh sunlight to keep colours vivid.</p>
       </details>
     </div>
+  </div>
+</section>
+
+<section class="section reviews-block" style="padding-top: 0;">
+  <div class="container">
+    <h2>What people are saying 🌷</h2>
+    {% set count = reviews|length %}
+    {% set avg = (reviews|map(attribute='rating')|sum / count) if count else 0 %}
+    <div class="reviews-summary">
+      <div>
+        <div class="reviews-avg">{{ "%.1f"|format(avg) }}</div>
+        <div class="stars lg" data-stars="{{ avg }}">
+          {% for i in range(1, 6) %}{% if i <= avg|round(0, 'floor')|int %}★{% else %}☆{% endif %}{% endfor %}
+        </div>
+        <small class="muted">{{ count }} review{{ '' if count == 1 else 's' }}</small>
+      </div>
+      <div style="flex:1; min-width: 200px;">
+        <p class="muted" style="margin: 0;">
+          Honest, photo-friendly reviews from real Papier Lab buyers. Tap the camera icon when you write your own.
+        </p>
+      </div>
+    </div>
+
+    {% if session.user %}
+      {% if existing_review %}
+        <div class="review-card" style="background: #fff7fb;">
+          <div class="review-card-head">
+            <div class="avatar">{{ (session.user.name or 'You')[:1] | upper }}</div>
+            <div>
+              <b>Your review</b>
+              <div class="stars">{% for i in range(1, 6) %}{% if i <= existing_review.rating %}★{% else %}☆{% endif %}{% endfor %}</div>
+            </div>
+            <form method="post" action="{{ url_for('products.delete_review', product_id=product.id) }}" style="margin-left:auto;"
+                  onsubmit="return confirm('Remove your review?');">
+              <button class="btn btn-sm btn-secondary" type="submit">Remove</button>
+            </form>
+          </div>
+          {% if existing_review.body %}<p style="margin: 4px 0;">{{ existing_review.body }}</p>{% endif %}
+          {% if existing_review.image_url %}
+          <div class="review-card-img"><img src="{{ existing_review.image_url }}" alt="Customer photo" /></div>
+          {% endif %}
+        </div>
+      {% else %}
+        <form class="review-form" method="post" enctype="multipart/form-data"
+              action="{{ url_for('products.submit_review', product_id=product.id) }}">
+          <h3 style="margin: 0 0 10px;">Leave a review</h3>
+          <div style="margin-bottom: 10px;">
+            <label style="display:block; margin-bottom: 6px;">Your rating</label>
+            <div class="star-picker" role="radiogroup" aria-label="Rating">
+              {% for i in [5,4,3,2,1] %}
+              <input type="radio" id="star{{i}}" name="rating" value="{{i}}" {% if i == 5 %}checked{% endif %} required />
+              <label for="star{{i}}" title="{{i}} stars">★</label>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="field">
+            <label for="reviewBody">Your message</label>
+            <textarea id="reviewBody" name="body" rows="3" maxlength="800"
+                      placeholder="What did you love? Anything we can improve?"></textarea>
+          </div>
+          <div class="field">
+            <label>Add a photo (optional)</label>
+            <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+              <label for="reviewPhoto" class="btn btn-secondary btn-sm" style="margin: 0;">📷 From gallery</label>
+              <label for="reviewPhotoCam" class="btn btn-secondary btn-sm" style="margin: 0;">📸 Take photo</label>
+            </div>
+            <input id="reviewPhoto"    type="file" name="image"
+                   accept="image/png,image/jpeg,image/webp" hidden />
+            <input id="reviewPhotoCam" type="file" name="image_cam"
+                   accept="image/*" capture="environment" hidden />
+            <div id="reviewPhotoPreview" style="margin-top: 10px;"></div>
+          </div>
+          <button class="btn btn-primary" type="submit">Post review 💌</button>
+        </form>
+      {% endif %}
+    {% else %}
+      <p class="muted" style="margin-bottom: 16px;">
+        <a href="{{ url_for('auth.login', next=request.path) }}">Sign in</a> to leave a review for this product.
+      </p>
+    {% endif %}
+
+    {% set other_reviews = reviews if not existing_review else reviews|reject('equalto', existing_review)|list %}
+    {% if other_reviews %}
+      {% for r in other_reviews %}
+      <div class="review-card">
+        <div class="review-card-head">
+          {% if r.avatar_url %}
+            <img src="{{ r.avatar_url }}" alt="" class="avatar" style="object-fit:cover;" />
+          {% else %}
+            <div class="avatar">{{ (r.full_name or 'Friend')[:1] | upper }}</div>
+          {% endif %}
+          <div>
+            <b>{{ r.full_name or 'Anonymous' }}</b>
+            <div class="stars">{% for i in range(1, 6) %}{% if i <= r.rating %}★{% else %}☆{% endif %}{% endfor %}</div>
+          </div>
+          <small class="muted" style="margin-left:auto;">{{ (r.created_at or '')[:10] }}</small>
+        </div>
+        {% if r.body %}<p style="margin: 4px 0;">{{ r.body }}</p>{% endif %}
+        {% if r.image_url %}
+        <div class="review-card-img"><img src="{{ r.image_url }}" alt="Customer photo" loading="lazy" /></div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% elif not existing_review %}
+      <p class="muted">No reviews yet — be the first 🌸</p>
+    {% endif %}
   </div>
 </section>
 
@@ -149,5 +265,33 @@
       if (addToCart()) window.location.href = "{{ url_for('cart.view') }}";
     };
   }
+
+  // Review photo preview (works for both file pickers — gallery + camera).
+  (function () {
+    const previews = document.getElementById('reviewPhotoPreview');
+    if (!previews) return;
+    function attach(id) {
+      const inp = document.getElementById(id);
+      if (!inp) return;
+      inp.addEventListener('change', () => {
+        const f = inp.files && inp.files[0];
+        if (!f) return;
+        // Clear the *other* input so we only submit one file.
+        const otherId = id === 'reviewPhoto' ? 'reviewPhotoCam' : 'reviewPhoto';
+        const other = document.getElementById(otherId);
+        if (other) other.value = '';
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          previews.innerHTML =
+            '<div class="review-card-img" style="max-width: 220px;">' +
+            '<img src="' + ev.target.result + '" alt="Preview" />' +
+            '</div>';
+        };
+        reader.readAsDataURL(f);
+      });
+    }
+    attach('reviewPhoto');
+    attach('reviewPhotoCam');
+  })();
 </script>
 {% endblock %}

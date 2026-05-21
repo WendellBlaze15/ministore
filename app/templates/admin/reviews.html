@@ -1,0 +1,83 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Admin · Reviews — Papier Lab{% endblock %}
+{% block admin %}
+<header data-reveal>
+  <span class="tag">customer feedback</span>
+  <h1 style="margin: 6px 0 4px;">Product reviews ⭐</h1>
+  <p class="muted">Every 5-star rating, comment, and customer photo from the shop.</p>
+</header>
+
+<div class="metrics metrics-grad" style="margin-top: 20px;" data-reveal>
+  <div class="metric grad-pink">
+    <div class="metric-ico">💬</div>
+    <div class="lbl">Total reviews</div>
+    <div class="val">{{ summary.total }}</div>
+    <div class="sub">Across all products</div>
+  </div>
+  <div class="metric grad-peach">
+    <div class="metric-ico">⭐</div>
+    <div class="lbl">Average rating</div>
+    <div class="val">{{ summary.average }}</div>
+    <div class="sub">out of 5.00</div>
+  </div>
+  <div class="metric grad-lavender">
+    <div class="metric-ico">🌟</div>
+    <div class="lbl">5-star love</div>
+    <div class="val">{{ summary.five_star }}</div>
+    <div class="sub">Glowing reviews</div>
+  </div>
+  <div class="metric grad-mint">
+    <div class="metric-ico">📸</div>
+    <div class="lbl">Customer photos</div>
+    <div class="val">{{ summary.with_photos }}</div>
+    <div class="sub">With buyer pictures</div>
+  </div>
+</div>
+
+<section class="panel" data-reveal>
+  {% if reviews %}
+    {% for r in reviews %}
+    <div class="review-card" style="margin-bottom: 14px;">
+      <div class="review-card-head">
+        {% if r.author.avatar_url %}
+          <img src="{{ r.author.avatar_url }}" alt="" class="avatar" style="object-fit:cover;" />
+        {% else %}
+          <div class="avatar">{{ (r.author.full_name or r.author.email or 'F')[:1] | upper }}</div>
+        {% endif %}
+        <div>
+          <b>{{ r.author.full_name or r.author.email or 'Anonymous' }}</b>
+          <div class="stars">{% for i in range(1, 6) %}{% if i <= r.rating %}★{% else %}☆{% endif %}{% endfor %}</div>
+          {% if r.author.email %}<small class="muted">{{ r.author.email }}</small>{% endif %}
+        </div>
+        <small class="muted" style="margin-left:auto;">{{ (r.created_at or '')[:10] }}</small>
+      </div>
+
+      {% if r.product %}
+      <div style="display:flex; align-items:center; gap:10px; margin: 6px 0; padding: 8px 10px; background: #fff7fb; border-radius: 12px;">
+        {% if r.product.cover_image %}<img src="{{ r.product.cover_image }}" alt="" style="width:36px; height:36px; border-radius:8px; object-fit:cover;" />{% endif %}
+        <a href="{{ url_for('products.detail', slug=r.product.slug) }}" target="_blank" rel="noopener" style="text-decoration:none;">
+          <b>{{ r.product.name }}</b>
+        </a>
+      </div>
+      {% endif %}
+
+      {% if r.body %}<p style="margin: 6px 0;">{{ r.body }}</p>{% endif %}
+      {% if r.image_url %}
+      <div class="review-card-img"><a href="{{ r.image_url }}" target="_blank" rel="noopener"><img src="{{ r.image_url }}" alt="Customer photo" loading="lazy" /></a></div>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('admin.review_delete', review_id=r.id) }}"
+            style="margin-top: 10px;"
+            onsubmit="return confirm('Remove this review?');">
+        <button class="btn btn-sm btn-danger" type="submit">🗑 Remove</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="empty">
+    <h3>No reviews yet</h3>
+    <p>When buyers leave a review on a product, it'll show up here in real time.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

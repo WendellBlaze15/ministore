@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, jsonify, request, current_app
 
 from app.utils.auth import login_required, current_user, is_admin
 from app.utils.security import require_same_origin
+from app.utils.helpers import allowed_image, safe_filename
 from app.services.supabase_client import get_service_client
 
 bp = Blueprint("chat", __name__)
@@ -103,14 +104,49 @@ def admin_room(chat_id: str):
 @login_required
 @require_same_origin
 def send_message():
+    """Send a chat message. Accepts either JSON (text-only) or a multipart
+    form (text and/or an image attachment)."""
     user = current_user()
-    data = request.get_json(silent=True) or {}
-    chat_id = (data.get("chat_id") or "").strip()
-    body = (data.get("body") or "").strip()
+    image_url: str | None = None
+
+    if request.content_type and request.content_type.startswith("multipart/"):
+        data = request.form
+        chat_id = (data.get("chat_id") or "").strip()
+        body = (data.get("body") or "").strip()
+        image_file = request.files.get("image")
+        svc = get_service_client()
+        if image_file and image_file.filename:
+            if not allowed_image(image_file.filename):
+                return jsonify({"ok": False, "error": "Image must be JPG/PNG/WebP."}), 400
+            if not svc:
+                return jsonify({"ok": False, "error": "Server not configured."}), 500
+            bucket = current_app.config.get("SUPABASE_STORAGE_BUCKET", "product-images")
+            path = f"chat-images/{chat_id}/{safe_filename(image_file.filename)}"
+            try:
+                try:
+                    buckets = svc.storage.list_buckets() or []
+                    names = {getattr(b, "name", None) or (b.get("name") if isinstance(b, dict) else None) for b in buckets}
+                    if bucket not in names:
+                        svc.storage.create_bucket(bucket, options={"public": True})
+                except Exception:
+                    pass
+                svc.storage.from_(bucket).upload(
+                    path=path, file=image_file.read(),
+                    file_options={"content-type": image_file.mimetype or "image/jpeg"},
+                )
+                image_url = svc.storage.from_(bucket).get_public_url(path)
+            except Exception as exc:
+                current_app.logger.warning("chat image upload failed: %s", exc)
+                return jsonify({"ok": False, "error": "Could not upload image. Try again."}), 500
+    else:
+        data = request.get_json(silent=True) or {}
+        chat_id = (data.get("chat_id") or "").strip()
+        body = (data.get("body") or "").strip()
+
     if not chat_id or not _UUID_RE.match(chat_id):
         return jsonify({"ok": False, "error": "Invalid chat."}), 400
-    if not body:
-        return jsonify({"ok": False, "error": "Message body is required."}), 400
+    if not body and not image_url:
+        return jsonify({"ok": False, "error": "Add a message or an image."}), 400
     if len(body) > 1500:
         return jsonify({"ok": False, "error": "Message too long (max 1500 chars)."}), 400
 
@@ -127,16 +163,29 @@ def send_message():
     except Exception:
         return jsonify({"ok": False, "error": "Chat not found."}), 404
 
+    record = {
+        "chat_id": chat_id,
+        "sender_id": user["id"],
+        "sender_role": "admin" if is_admin() else "customer",
+        "body": body,
+    }
+    if image_url:
+        record["image_url"] = image_url
+
     try:
-        resp = svc.table("messages").insert({
-            "chat_id": chat_id,
-            "sender_id": user["id"],
-            "sender_role": "admin" if is_admin() else "customer",
-            "body": body,
-        }).execute()
+        resp = svc.table("messages").insert(record).execute()
         msg = (resp.data or [None])[0]
         return jsonify({"ok": True, "message": msg})
     except Exception as exc:
+        # If image_url column not present yet, retry without it (and warn).
+        if image_url and "image_url" in str(exc).lower():
+            record.pop("image_url", None)
+            try:
+                resp = svc.table("messages").insert(record).execute()
+                return jsonify({"ok": True, "message": (resp.data or [None])[0],
+                                "warning": "Migration 009 not applied yet — image attachments require image_url column."})
+            except Exception as exc2:
+                current_app.logger.warning("send_message retry failed: %s", exc2)
         current_app.logger.warning("send_message failed: %s", exc)
         return jsonify({"ok": False, "error": "Could not send. Please try again."}), 500
 
@@ -181,17 +230,26 @@ def fetch_messages(chat_id: str):
         return jsonify({"ok": False, "messages": []}), 500
 
     since = request.args.get("since")
-    query = (
-        svc.table("messages")
-        .select("id, body, sender_id, sender_role, seen, created_at")
-        .eq("chat_id", chat_id)
-        .order("created_at", desc=False)
-        .limit(200)
-    )
-    if since:
-        query = query.gt("created_at", since)
+    select_cols = "id, body, sender_id, sender_role, seen, created_at, image_url"
     try:
+        query = (
+            svc.table("messages").select(select_cols)
+            .eq("chat_id", chat_id).order("created_at", desc=False).limit(200)
+        )
+        if since:
+            query = query.gt("created_at", since)
         rows = (query.execute()).data or []
     except Exception:
-        rows = []
+        # Legacy schema without image_url — fall back to text-only.
+        try:
+            query = (
+                svc.table("messages")
+                .select("id, body, sender_id, sender_role, seen, created_at")
+                .eq("chat_id", chat_id).order("created_at", desc=False).limit(200)
+            )
+            if since:
+                query = query.gt("created_at", since)
+            rows = (query.execute()).data or []
+        except Exception:
+            rows = []
     return jsonify({"ok": True, "messages": rows})

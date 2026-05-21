@@ -57,6 +57,7 @@
   </script>
   <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/cart.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/wishlist.js') }}" defer></script>
   <script type="module" src="{{ url_for('static', filename='js/supabase.js') }}"></script>
 
   {% with messages = get_flashed_messages(with_categories=true) %}

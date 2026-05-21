@@ -64,6 +64,14 @@ def place_order():
         if not (payload.get(key) or "").strip():
             return jsonify({"ok": False, "error": f"Missing field: {key}"}), 400
 
+    # Studio currently only accepts GCash (settled in chat / DM after
+    # placing the order). Reject anything else so we never quietly
+    # store a "cod" order the studio can't actually fulfil.
+    payment_method = (payload.get("payment_method") or "").strip().lower()
+    if payment_method != "gcash":
+        return jsonify({"ok": False, "error": "We currently accept GCash only."}), 400
+    payload["payment_method"] = "gcash"
+
     svc = get_service_client()
     if not svc:
         return jsonify({"ok": False, "error": "Server not configured."}), 500

@@ -1,0 +1,48 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Admin · Blocked emails — Papier Lab{% endblock %}
+{% block admin %}
+<header data-reveal>
+  <span class="tag">access control</span>
+  <h1 style="margin: 6px 0 4px;">Blocked emails 🚫</h1>
+  <p class="muted">
+    When you delete a user we also block their email so they can't quietly
+    re-register and "come back". You can lift the block any time.
+  </p>
+  <a class="btn btn-sm btn-secondary" href="{{ url_for('admin.users') }}">← All users</a>
+</header>
+
+<section class="panel" data-reveal>
+  {% if banned %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Reason</th>
+        <th>Blocked at</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in banned %}
+      <tr>
+        <td><b>{{ row.email }}</b></td>
+        <td><small class="muted">{{ row.reason or 'removed by admin' }}</small></td>
+        <td><small class="muted">{{ (row.banned_at or '')[:10] }}</small></td>
+        <td>
+          <form method="post" action="{{ url_for('admin.unban_email', email=row.email) }}" style="display:inline;"
+                onsubmit="return confirm('Allow {{ row.email }} to register again?');">
+            <button class="btn btn-sm btn-secondary" type="submit">↺ Unban</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <h3>No blocked emails 🌷</h3>
+    <p>Nothing to manage here — deleted users will appear in this list automatically.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

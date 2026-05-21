@@ -1119,6 +1119,201 @@
 .user-stat small { color: var(--ink-500, #7a6470); font-size: .82rem; }
 
 /* ============================================================
+   Checkout — GCash + shipping note
+============================================================ */
+.pay-option--only {
+  background: linear-gradient(135deg, #fff7fb, #fff0f6);
+  border: 1px solid rgba(244, 114, 182, .35);
+}
+.checkout-note {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fffaf4 0%, #fff5fa 100%);
+  border: 1px dashed rgba(244, 114, 182, .45);
+  font-size: .95rem;
+}
+.checkout-note h4 {
+  color: var(--pink-700, #c5366d);
+  font-family: var(--font-display, 'Fraunces', serif);
+  font-size: 1.05rem;
+}
+.checkout-socials {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px;
+}
+.chip-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--border, #f8d6e3);
+  color: var(--pink-700, #c5366d);
+  padding: 6px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: .85rem;
+  font-weight: 600;
+  transition: transform .15s, box-shadow .15s;
+}
+.chip-link:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(196, 54, 109, .15); }
+
+/* ============================================================
+   Wishlist heart button (product card + detail)
+============================================================ */
+.wishlist-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .9);
+  border: 1px solid rgba(244, 114, 182, .35);
+  color: var(--pink-700, #c5366d);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  z-index: 3;
+  box-shadow: 0 4px 10px rgba(196, 54, 109, .12);
+  backdrop-filter: blur(4px);
+  transition: transform .15s, background .2s;
+}
+.wishlist-btn:hover { transform: scale(1.06); background: #fff; }
+.wishlist-btn[aria-pressed="true"] {
+  background: linear-gradient(135deg, #ff7aa8, #ff9bbf);
+  color: #fff;
+  border-color: transparent;
+}
+.wishlist-btn .heart-on  { display: none; }
+.wishlist-btn[aria-pressed="true"] .heart-on  { display: inline; }
+.wishlist-btn[aria-pressed="true"] .heart-off { display: none; }
+
+.wishlist-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #fff;
+  border: 1px solid var(--border, #f8d6e3);
+  color: var(--pink-700, #c5366d);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, transform .12s;
+}
+.wishlist-pill:hover { transform: translateY(-1px); }
+.wishlist-pill[aria-pressed="true"] {
+  background: linear-gradient(135deg, #ffeaf1, #fff);
+}
+
+/* ============================================================
+   Product reviews
+============================================================ */
+.reviews-block { margin-top: 32px; }
+.reviews-summary {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff7fb, #fffaf4);
+  border: 1px solid var(--border, #f8d6e3);
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.reviews-avg {
+  font-family: var(--font-display, 'Fraunces', serif);
+  font-size: 2.4rem;
+  color: var(--pink-700, #c5366d);
+  line-height: 1;
+}
+.stars { letter-spacing: 3px; color: #f5c042; font-size: 1.05rem; }
+.stars.lg { font-size: 1.4rem; }
+
+.review-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--border, #f8d6e3);
+  margin-bottom: 12px;
+}
+.review-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.review-card-head .avatar { width: 36px; height: 36px; }
+.review-card-img {
+  margin-top: 10px;
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 320px;
+}
+.review-card-img img { width: 100%; height: auto; display: block; object-fit: cover; }
+
+.review-form {
+  padding: 16px;
+  background: linear-gradient(135deg, #fff7fb, #fff);
+  border: 1px solid var(--border, #f8d6e3);
+  border-radius: 16px;
+  margin-bottom: 18px;
+}
+.star-picker {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  gap: 2px;
+}
+.star-picker input { display: none; }
+.star-picker label {
+  font-size: 1.6rem;
+  color: #e1d4dc;
+  cursor: pointer;
+  transition: color .12s;
+}
+.star-picker label:hover,
+.star-picker label:hover ~ label,
+.star-picker input:checked ~ label { color: #f5c042; }
+
+/* ============================================================
+   Chat — image bubbles + attach button
+============================================================ */
+.bubble img.chat-img {
+  max-width: 240px;
+  max-height: 240px;
+  border-radius: 14px;
+  margin-top: 6px;
+  display: block;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,.08);
+}
+.chat-foot .chat-attach {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--border, #f8d6e3);
+  color: var(--pink-700, #c5366d);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform .12s;
+  flex-shrink: 0;
+}
+.chat-foot .chat-attach:hover { transform: scale(1.05); }
+.chat-foot .chat-attach.has-file {
+  background: linear-gradient(135deg, #ff7aa8, #ff9bbf);
+  color: #fff;
+  border-color: transparent;
+}
+.chat-preview {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px dashed var(--border, #f8d6e3);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  font-size: .85rem;
+}
+.chat-preview img { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; }
+
+/* ============================================================
    Order counters + order cards (buyer)
 ============================================================ */
 .order-counters {

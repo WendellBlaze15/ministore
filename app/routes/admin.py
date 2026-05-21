@@ -526,22 +526,103 @@ def user_delete(user_id):
     if not svc:
         flash("Server not configured.", "error")
         return redirect(url_for("admin.users"))
+
+    # Capture the email BEFORE we delete so we can ban it from re-registering.
+    deleted_email = ""
     try:
-        # Best-effort: remove dependent rows first to make the delete clean.
-        try: svc.table("wishlists").delete().eq("user_id", user_id).execute()
-        except Exception: pass
-        try: svc.table("messages").delete().eq("sender_id", user_id).execute()
-        except Exception: pass
-        try: svc.table("chats").delete().eq("user_id", user_id).execute()
-        except Exception: pass
-        try: svc.table("profiles").delete().eq("id", user_id).execute()
-        except Exception: pass
-        svc.auth.admin.delete_user(user_id)
-        flash("User deleted.", "success")
+        existing = (svc.table("profiles").select("email").eq("id", user_id).single().execute()).data
+        if existing and existing.get("email"):
+            deleted_email = existing["email"].lower().strip()
+    except Exception:
+        pass
+    if not deleted_email:
+        try:
+            raw = svc.auth.admin.get_user_by_id(user_id)
+            u = getattr(raw, "user", None) or raw
+            deleted_email = (getattr(u, "email", "") or "").lower().strip()
+        except Exception:
+            pass
+
+    try:
+        # Best-effort cascade — most of these have on-delete-cascade in the
+        # schema but we delete explicitly so partial RLS configurations
+        # can't block the auth.admin.delete_user step below.
+        for tbl, col in (
+            ("wishlists",  "user_id"),
+            ("messages",   "sender_id"),
+            ("chats",      "user_id"),
+            ("product_reviews", "user_id"),
+            ("order_reviews",   "user_id"),
+            ("profiles",   "id"),
+        ):
+            try:
+                svc.table(tbl).delete().eq(col, user_id).execute()
+            except Exception as exc:
+                current_app.logger.info("delete cleanup %s skipped: %s", tbl, exc)
+
+        svc.auth.admin.delete_user(user_id, should_soft_delete=False)
+
+        # Verify the auth user is really gone so we don't leave the admin
+        # thinking the delete succeeded when it didn't.
+        still_exists = False
+        try:
+            res = svc.auth.admin.get_user_by_id(user_id)
+            still_exists = res is not None and getattr(res, "user", None) is not None
+        except Exception:
+            still_exists = False
+        if still_exists:
+            flash("Supabase reported success but the user is still listed — please refresh.", "error")
+            return redirect(url_for("admin.users"))
+
+        # Ban the email so the buyer can't simply re-register with the same
+        # address and "come back". Admins can lift this from the Users page.
+        if deleted_email:
+            try:
+                svc.table("banned_emails").upsert(
+                    {"email": deleted_email,
+                     "reason": "removed by admin",
+                     "banned_by": me.get("id")},
+                    on_conflict="email",
+                ).execute()
+            except Exception as exc:
+                current_app.logger.info("banned_emails write skipped: %s", exc)
+
+        flash(f"User deleted{' and email blocked from re-registration' if deleted_email else ''}.", "success")
     except Exception as exc:
         current_app.logger.warning("admin delete user failed: %s", exc)
         flash(f"Could not delete user: {exc}", "error")
     return redirect(url_for("admin.users"))
+
+
+@bp.route("/users/banned", methods=["GET"])
+@admin_required
+def banned_emails():
+    """List of emails blocked from re-registering, with un-ban form."""
+    svc = get_service_client()
+    rows = []
+    if svc:
+        try:
+            rows = (
+                svc.table("banned_emails").select("email, reason, banned_at")
+                .order("banned_at", desc=True).execute()
+            ).data or []
+        except Exception:
+            rows = []
+    return render_template("admin/banned_emails.html", banned=rows)
+
+
+@bp.route("/users/banned/<path:email>/unban", methods=["POST"])
+@admin_required
+@require_same_origin
+def unban_email(email: str):
+    svc = get_service_client()
+    if svc:
+        try:
+            svc.table("banned_emails").delete().eq("email", email.lower().strip()).execute()
+            flash(f"{email} can register again.", "success")
+        except Exception as exc:
+            flash(f"Could not unban: {exc}", "error")
+    return redirect(url_for("admin.banned_emails"))
 
 
 @bp.route("/users/<user_id>/role", methods=["POST"])
@@ -767,6 +848,69 @@ def settings():
         return redirect(url_for("admin.settings"))
 
     return render_template("admin/settings.html", profile=profile)
+
+
+@bp.route("/reviews")
+@admin_required
+def reviews():
+    """Admin view of every product review with buyer info + photo."""
+    svc = get_service_client()
+    rows: list[dict] = []
+    if svc:
+        try:
+            rev = (
+                svc.table("product_reviews")
+                .select("id, product_id, user_id, rating, body, image_url, created_at")
+                .order("created_at", desc=True)
+                .limit(200)
+                .execute()
+            ).data or []
+            pids = list({r["product_id"] for r in rev if r.get("product_id")})
+            uids = list({r["user_id"] for r in rev if r.get("user_id")})
+
+            products = (
+                svc.table("products").select("id, name, slug, cover_image")
+                .in_("id", pids).execute()
+            ).data or [] if pids else []
+            profiles = (
+                svc.table("profiles").select("id, full_name, email, avatar_url")
+                .in_("id", uids).execute()
+            ).data or [] if uids else []
+            prod_by_id = {p["id"]: p for p in products}
+            prof_by_id = {p["id"]: p for p in profiles}
+
+            for r in rev:
+                r["product"] = prod_by_id.get(r.get("product_id"), {})
+                r["author"] = prof_by_id.get(r.get("user_id"), {})
+            rows = rev
+        except Exception as exc:
+            current_app.logger.info("admin reviews load skipped: %s", exc)
+
+    summary = {
+        "total": len(rows),
+        "five_star": sum(1 for r in rows if int(r.get("rating") or 0) == 5),
+        "with_photos": sum(1 for r in rows if r.get("image_url")),
+    }
+    if rows:
+        avg = sum(int(r.get("rating") or 0) for r in rows) / max(1, len(rows))
+    else:
+        avg = 0
+    summary["average"] = round(avg, 2)
+    return render_template("admin/reviews.html", reviews=rows, summary=summary)
+
+
+@bp.route("/reviews/<review_id>/delete", methods=["POST"])
+@admin_required
+@require_same_origin
+def review_delete(review_id):
+    svc = get_service_client()
+    if svc:
+        try:
+            svc.table("product_reviews").delete().eq("id", review_id).execute()
+            flash("Review removed.", "success")
+        except Exception as exc:
+            flash(f"Could not remove review: {exc}", "error")
+    return redirect(url_for("admin.reviews"))
 
 
 @bp.route("/settings/password-otp", methods=["POST"])

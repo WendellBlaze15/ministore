@@ -1,10 +1,13 @@
 {% extends "admin/_layout.html" %}
 {% block title %}Admin · Users — Papier Lab{% endblock %}
 {% block admin %}
-<header data-reveal>
-  <span class="tag">user management</span>
-  <h1 style="margin: 6px 0 4px;">Everyone with an account 👥</h1>
-  <p class="muted">Search, change roles, force-verify, or delete accounts. Be careful — deletes are permanent.</p>
+<header data-reveal style="display:flex; justify-content:space-between; align-items:flex-end; gap: 12px; flex-wrap: wrap;">
+  <div>
+    <span class="tag">user management</span>
+    <h1 style="margin: 6px 0 4px;">Everyone with an account 👥</h1>
+    <p class="muted">View profiles, force-verify emails, or delete accounts. Deletes also block the email from re-registering.</p>
+  </div>
+  <a class="btn btn-sm btn-secondary" href="{{ url_for('admin.banned_emails') }}">🚫 Blocked emails</a>
 </header>
 
 <div class="metrics metrics-grad" style="margin-top: 20px;" data-reveal>

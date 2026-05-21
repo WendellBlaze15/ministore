@@ -199,6 +199,20 @@ def register_post():
         return _auth_error("Server is not configured for Supabase yet.",
                             template="auth/register.html", http=500)
 
+    # Block re-registration of emails the admin has removed from the
+    # studio. This is what fixes the "deleted user keeps coming back"
+    # report — once banned, the same address can't slip back in.
+    try:
+        banned = (svc.table("banned_emails").select("email").eq("email", email).limit(1).execute()).data or []
+    except Exception:
+        banned = []
+    if banned:
+        return _auth_error(
+            "This email is no longer accepted by the studio. "
+            "Please contact us if you think this is a mistake.",
+            template="auth/register.html", http=403,
+        )
+
     composed_parts = [p for p in (address, barangay, city, province, region) if p]
     composed_address = ", ".join(composed_parts) if composed_parts else ""
 

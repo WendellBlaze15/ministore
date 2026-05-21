@@ -37,20 +37,30 @@
 
       <h3>Payment method</h3>
       <div class="pay-options">
-        <label class="pay-option">
-          <input type="radio" name="pay" value="cod" checked />
+        <label class="pay-option pay-option--only">
+          <input type="radio" name="pay" value="gcash" checked />
           <div>
-            <b>💵 Cash on Delivery</b>
-            <small>Pay when your parcel arrives.</small>
+            <b>📱 GCash</b>
+            <small>We accept GCash only — see the friendly note below for the next step.</small>
           </div>
         </label>
-        <label class="pay-option">
-          <input type="radio" name="pay" value="gcash" />
-          <div>
-            <b>📱 GCash <span class="tag" style="margin-left:6px;">mockup</span></b>
-            <small>We'll send our GCash # in chat after you place the order.</small>
-          </div>
-        </label>
+      </div>
+
+      <div class="checkout-note">
+        <h4 style="margin: 0 0 8px;">💌 How GCash + shipping works</h4>
+        <ul style="margin: 0; padding-left: 18px; color: var(--ink-700, #4a3540);">
+          <li><b>GCash payment</b> is handled via our chat or DM. After you place this order, please message us through any of the channels below with a screenshot of your transfer:</li>
+        </ul>
+        <div class="checkout-socials">
+          <a class="chip-link" href="{{ url_for('chat.room') }}">💬 In-app chat</a>
+          <a class="chip-link" href="https://www.tiktok.com/@papierlab_" target="_blank" rel="noopener">🎵 TikTok DM</a>
+          <a class="chip-link" href="https://www.facebook.com/share/1Y3251usiE/?mibextid=wwXIfr" target="_blank" rel="noopener">📘 Facebook DM</a>
+          <a class="chip-link" href="https://www.facebook.com/share/1Y3251usiE/?mibextid=wwXIfr" target="_blank" rel="noopener">📷 Instagram DM</a>
+        </div>
+        <ul style="margin: 12px 0 0; padding-left: 18px; color: var(--ink-700, #4a3540);">
+          <li><b>Shipping</b> is also coordinated in chat — we'll confirm your courier (J&amp;T / LBC), ETA, and any custom requests once payment is verified.</li>
+          <li>Orders are packed in 2–3 days. Free shipping on orders ₱1,500+, otherwise a flat ₱80 nationwide.</li>
+        </ul>
       </div>
 
       <button class="btn btn-primary btn-block" type="submit" style="margin-top: 18px;">Place my order ✨</button>

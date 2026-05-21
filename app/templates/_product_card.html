@@ -1,6 +1,15 @@
 {% macro product_card(p) -%}
 {% set out_of_stock = (p.stock is defined) and (p.stock is not none) and (p.stock|int <= 0) %}
-<article class="product-card {{ 'is-oos' if out_of_stock else '' }}" data-reveal>
+<article class="product-card {{ 'is-oos' if out_of_stock else '' }}" data-reveal style="position:relative;">
+  <button type="button" class="wishlist-btn"
+          data-wishlist
+          data-product-id="{{ p.id }}"
+          aria-label="Save to wishlist"
+          aria-pressed="false"
+          title="Save to wishlist">
+    <span class="heart-off" aria-hidden="true">♡</span>
+    <span class="heart-on"  aria-hidden="true">♥</span>
+  </button>
   <a href="{{ url_for('products.detail', slug=p.slug) }}" class="product-thumb">
     {% if p.is_featured and not out_of_stock %}<span class="badge">✨ Featured</span>{% endif %}
     {% if out_of_stock %}<span class="badge badge-oos">Out of stock</span>{% endif %}
