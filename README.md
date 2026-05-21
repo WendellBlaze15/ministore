@@ -22,8 +22,10 @@ Soft, feminine, Korean-inspired aesthetic with a light-pink theme, beginner-frie
 
 ## Features
 
-### Customer
-- Register / sign in / forgot password (Supabase Auth)
+### Customer (buyer)
+- Register / sign in (Supabase Auth)
+- **Password reset via OTP email** — Gmail SMTP sends a 6-digit code; the
+  code is HMAC-SHA256 hashed on the server, never stored in plain text
 - Browse, search and filter products by category
 - Product detail page with multiple images and customisation note
 - Persistent localStorage cart with smooth UX
@@ -137,7 +139,12 @@ Short version:
 
 - Supabase **Row Level Security** is enabled on every table — a customer can never read someone else's orders, and only admins can write products.
 - Service-role key never reaches the browser (only used inside Flask).
-- `FLASK_SECRET_KEY` signs session cookies (HttpOnly, SameSite=Lax).
+- Supabase Auth handles password hashing (bcrypt) — plaintext passwords never touch our server.
+- `/auth/session` re-verifies every access token by calling `supabase.auth.get_user()` — forged session payloads are rejected.
+- `FLASK_SECRET_KEY` signs session cookies (HttpOnly, SameSite=Lax, Secure in production).
+- `@require_same_origin` blocks cross-origin POSTs to state-changing JSON endpoints.
+- OTP codes for password reset are **HMAC-SHA256 hashed** with `FLASK_SECRET_KEY`, expire in 10 minutes, lock after 5 wrong attempts, and rate-limit re-issue to one per 60 seconds per email.
+- Storage policies restrict product-image WRITEs to admins only (defense in depth on top of service-role uploads).
 - Server-side input validation on checkout (stock, prices, length limits).
 - Image uploads are restricted to safe extensions (`png`, `jpg`, `jpeg`, `webp`, `gif`).
 - Admin routes are protected by the `@admin_required` decorator.

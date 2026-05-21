@@ -6,12 +6,13 @@
 <div class="auth-wrap">
   <aside class="auth-art">
     <div class="blobs"><span></span><span></span></div>
-    <a href="{{ url_for('main.home') }}" class="brand" style="color: white;">
-      <span class="brand-mark" style="background:white; color: var(--pink-600);">P</span>
-      <span style="color: var(--pink-700);">Papier Lab</span>
+    <a href="{{ url_for('main.home') }}" class="brand" style="color: var(--pink-700);">
+      <span class="brand-mark"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Papier Lab" /></span>
+      <span>Papier Lab</span>
     </a>
-    <div style="z-index:1;">
-      <h2>Welcome back, friend ♡</h2>
+    <div style="z-index:1; display:flex; flex-direction:column; gap: 18px; align-items: flex-start;">
+      <div class="brand-mark brand-mark--lg"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Papier Lab" /></div>
+      <h2 style="margin: 0;">Welcome back, friend ♡</h2>
       <p class="muted" style="max-width: 320px;">
         Sign in to track orders, pick up where you left off in chat, and breeze through checkout.
       </p>
@@ -23,7 +24,9 @@
     <div class="auth-form">
       <span class="tag">sign in</span>
       <h1>Pen pals welcome back ✨</h1>
-      <p class="muted">New here? <a href="{{ url_for('auth.register') }}" style="color: var(--pink-600); font-weight:600;">Create an account →</a></p>
+      <p class="muted">
+        New buyer? <a href="{{ url_for('auth.register') }}" style="color: var(--pink-600); font-weight:600;">Create a customer account →</a>
+      </p>
 
       <form id="loginForm" style="margin-top: 20px;">
         <div class="field">
@@ -42,6 +45,9 @@
         </div>
         <button class="btn btn-primary btn-block" type="submit" style="margin-top: 16px;">Sign in</button>
       </form>
+
+      <div class="auth-divider">or</div>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-secondary btn-block">Create a customer account</a>
 
       <div class="auth-divider">protected by Supabase Auth</div>
       <p class="muted" style="font-size:.85rem;">By signing in you agree to our cute little terms ♡</p>

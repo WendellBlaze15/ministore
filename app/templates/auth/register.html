@@ -7,11 +7,12 @@
   <aside class="auth-art">
     <div class="blobs"><span></span><span></span></div>
     <a href="{{ url_for('main.home') }}" class="brand" style="color: var(--pink-700);">
-      <span class="brand-mark" style="background:white; color: var(--pink-600);">P</span>
+      <span class="brand-mark"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Papier Lab" /></span>
       <span>Papier Lab</span>
     </a>
-    <div style="z-index:1;">
-      <h2>Join the pen pals ♡</h2>
+    <div style="z-index:1; display:flex; flex-direction:column; gap: 18px; align-items: flex-start;">
+      <div class="brand-mark brand-mark--lg"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Papier Lab" /></div>
+      <h2 style="margin: 0;">Join the pen pals ♡</h2>
       <p class="muted" style="max-width: 320px;">
         Create a free account for faster checkout, order tracking, custom requests, and chat support.
       </p>

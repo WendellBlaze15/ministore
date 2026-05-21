@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Enter your code — Papier Lab{% endblock %}
+
+{% block layout %}
+{% include "_navbar.html" %}
+<div class="auth-wrap">
+  <aside class="auth-art">
+    <div class="blobs"><span></span><span></span></div>
+    <a href="{{ url_for('main.home') }}" class="brand" style="color: var(--pink-700);">
+      <span class="brand-mark"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Papier Lab" /></span>
+      <span>Papier Lab</span>
+    </a>
+    <div style="z-index:1; display:flex; flex-direction:column; gap: 18px; align-items: flex-start;">
+      <div class="brand-mark brand-mark--lg"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Papier Lab" /></div>
+      <h2 style="margin: 0;">Almost there ♡</h2>
+      <p class="muted" style="margin: 0;">Pop in the 6-digit code from your email + your new password.</p>
+    </div>
+    <p class="muted" style="z-index:1;">code expires after 10 minutes</p>
+  </aside>
+
+  <section class="auth-form-wrap">
+    <div class="auth-form">
+      <span class="tag">verify code</span>
+      <h1>Reset your password</h1>
+      <p class="muted">Didn't get a code? <a href="{{ url_for('auth.forgot') }}" style="color: var(--pink-600); font-weight: 600;">Resend →</a></p>
+
+      <form id="resetForm" style="margin-top: 20px;">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="email" required value="{{ prefill_email }}" />
+        </div>
+        <div class="field">
+          <label>6-digit code</label>
+          <input type="text" id="code" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                 placeholder="••••••" style="letter-spacing: 12px; text-align: center; font-size: 1.3rem;
+                 font-weight: 700;" autocomplete="one-time-code" />
+        </div>
+        <div class="field">
+          <label>New password</label>
+          <input type="password" id="new_password" minlength="8" required placeholder="At least 8 characters" />
+        </div>
+        <div class="field">
+          <label>Confirm new password</label>
+          <input type="password" id="confirm_password" minlength="8" required />
+        </div>
+        <button class="btn btn-primary btn-block" type="submit" style="margin-top: 8px;">Set new password</button>
+      </form>
+
+      <p class="muted" style="margin-top: 20px;"><a href="{{ url_for('auth.login') }}" style="color: var(--pink-600); font-weight: 600;">← Back to sign in</a></p>
+    </div>
+  </section>
+</div>
+{% include "_footer.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { toast } from "{{ url_for('static', filename='js/main.js') }}";
+
+  document.getElementById('resetForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    const code = document.getElementById('code').value.trim();
+    const new_password = document.getElementById('new_password').value;
+    const confirm_password = document.getElementById('confirm_password').value;
+    if (new_password !== confirm_password) {
+      toast("Passwords don't match.", { type: 'error' });
+      return;
+    }
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Updating…';
+    try {
+      const res = await fetch("{{ url_for('auth.reset_post') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code, new_password, confirm_password }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast('Password updated! Sign in with your new password ✨', { type: 'success' });
+        setTimeout(() => window.location.href = "{{ url_for('auth.login') }}", 900);
+      } else {
+        toast(data.error || 'Could not reset password.', { type: 'error' });
+        btn.disabled = false; btn.textContent = 'Set new password';
+      }
+    } catch (err) {
+      toast('Network error — please try again.', { type: 'error' });
+      btn.disabled = false; btn.textContent = 'Set new password';
+    }
+  });
+</script>
+{% endblock %}

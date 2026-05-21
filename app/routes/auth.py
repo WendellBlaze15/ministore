@@ -38,9 +38,50 @@ def register():
     return render_template("auth/register.html")
 
 
-@bp.route("/forgot")
+@bp.route("/forgot", methods=["GET"])
 def forgot():
-    return render_template("auth/forgot.html")
+    return render_template("auth/forgot.html", prefill_email=request.args.get("email", ""))
+
+
+@bp.route("/forgot", methods=["POST"])
+@require_same_origin
+def forgot_post():
+    from app.services.otp import request_reset_code
+
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip()
+    ok, message = request_reset_code(email)
+    status = 200 if ok else 400
+    return jsonify({"ok": ok, "message": message}), status
+
+
+@bp.route("/reset", methods=["GET"])
+def reset():
+    return render_template("auth/reset.html", prefill_email=request.args.get("email", ""))
+
+
+@bp.route("/reset", methods=["POST"])
+@require_same_origin
+def reset_post():
+    from app.services.otp import verify_and_consume, reset_password
+
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip()
+    code = (data.get("code") or "").strip()
+    new_password = data.get("new_password") or ""
+    confirm = data.get("confirm_password") or ""
+
+    if new_password != confirm:
+        return jsonify({"ok": False, "error": "Passwords don't match."}), 400
+
+    ok, user_id, msg = verify_and_consume(email, code)
+    if not ok:
+        return jsonify({"ok": False, "error": msg}), 400
+
+    ok2, msg2 = reset_password(user_id, new_password)
+    if not ok2:
+        return jsonify({"ok": False, "error": msg2}), 400
+    return jsonify({"ok": True, "message": msg2})
 
 
 @bp.route("/session", methods=["POST"])

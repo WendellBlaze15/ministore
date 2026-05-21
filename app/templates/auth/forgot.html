@@ -7,12 +7,13 @@
   <aside class="auth-art">
     <div class="blobs"><span></span><span></span></div>
     <a href="{{ url_for('main.home') }}" class="brand" style="color: var(--pink-700);">
-      <span class="brand-mark" style="background:white; color: var(--pink-600);">P</span>
+      <span class="brand-mark"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Papier Lab" /></span>
       <span>Papier Lab</span>
     </a>
-    <div style="z-index:1;">
-      <h2>It happens to all of us ♡</h2>
-      <p class="muted">Pop in your email and we'll send a magic reset link your way.</p>
+    <div style="z-index:1; display:flex; flex-direction:column; gap: 18px; align-items: flex-start;">
+      <div class="brand-mark brand-mark--lg"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Papier Lab" /></div>
+      <h2 style="margin: 0;">It happens to all of us ♡</h2>
+      <p class="muted" style="margin: 0;">Pop in your email and we'll send a 6-digit code your way.</p>
     </div>
     <p class="muted" style="z-index:1;">need help? message us in chat 💌</p>
   </aside>
@@ -21,15 +22,19 @@
     <div class="auth-form">
       <span class="tag">reset password</span>
       <h1>Forgot your password?</h1>
-      <p class="muted">No worries — we'll send a reset link to your email.</p>
+      <p class="muted">Pop in your email and we'll send a 6-digit code.</p>
       <form id="forgotForm" style="margin-top: 20px;">
         <div class="field">
           <label>Email</label>
-          <input type="email" id="email" required />
+          <input type="email" id="email" required value="{{ prefill_email }}" placeholder="hello@papierlab.shop" />
         </div>
-        <button class="btn btn-primary btn-block" type="submit">Send reset link</button>
+        <button class="btn btn-primary btn-block" type="submit">Send my code</button>
       </form>
-      <p class="muted" style="margin-top: 20px;"><a href="{{ url_for('auth.login') }}" style="color: var(--pink-600); font-weight: 600;">← Back to sign in</a></p>
+      <p class="muted" style="margin-top: 16px; font-size:.9rem;">
+        Already have a code? <a href="{{ url_for('auth.reset') }}" style="color: var(--pink-600); font-weight: 600;">Enter it here →</a>
+      </p>
+      <div class="auth-divider">we'll email you a one-time code</div>
+      <p class="muted"><a href="{{ url_for('auth.login') }}" style="color: var(--pink-600); font-weight: 600;">← Back to sign in</a></p>
     </div>
   </section>
 </div>
@@ -38,15 +43,32 @@
 
 {% block scripts %}
 <script type="module">
-  import { supabase } from "{{ url_for('static', filename='js/supabase.js') }}";
   import { toast } from "{{ url_for('static', filename='js/main.js') }}";
   document.getElementById('forgotForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!supabase) return toast('Supabase not configured', { type: 'error' });
     const email = document.getElementById('email').value.trim();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/auth/login' });
-    if (error) return toast(error.message, { type: 'error' });
-    toast('Reset link sent! Check your inbox 💌', { type: 'success' });
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      const res = await fetch("{{ url_for('auth.forgot_post') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast(data.message || 'Code sent! Check your email 💌', { type: 'success' });
+        setTimeout(() => {
+          window.location.href = "{{ url_for('auth.reset') }}?email=" + encodeURIComponent(email);
+        }, 700);
+      } else {
+        toast(data.message || data.error || 'Could not send the code.', { type: 'error' });
+        btn.disabled = false; btn.textContent = 'Send my code';
+      }
+    } catch (err) {
+      toast('Network error — please try again.', { type: 'error' });
+      btn.disabled = false; btn.textContent = 'Send my code';
+    }
   });
 </script>
 {% endblock %}

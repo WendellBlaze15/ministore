@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#ffd2e1" />
   <title>{% block title %}{{ APP_NAME }} — handmade with love{% endblock %}</title>
   <meta name="description" content="{{ APP_TAGLINE }}. Handmade bookmarks, keychains, polaroid prints & crafts from Papier Lab." />
-  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><text y='52' font-size='52'>🌸</text></svg>" />
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}" type="image/png" />
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logo.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}" />
   {% block head %}{% endblock %}

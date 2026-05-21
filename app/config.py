@@ -22,6 +22,15 @@ class Config:
     ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
     APP_URL = os.environ.get("APP_URL", "http://localhost:5000")
 
+    # SMTP for password-reset OTP emails
+    SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+    SMTP_USE_TLS = (os.environ.get("SMTP_USE_TLS", "true") or "").lower() in ("1", "true", "yes")
+    SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "")
+    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+    SMTP_FROM_EMAIL = os.environ.get("SMTP_FROM_EMAIL") or os.environ.get("SMTP_USERNAME", "")
+    SMTP_FROM_NAME = os.environ.get("SMTP_FROM_NAME", "Papier Lab")
+
     # Upload limits (8 MB)
     MAX_CONTENT_LENGTH = 8 * 1024 * 1024
     ALLOWED_IMAGE_EXTS = {"png", "jpg", "jpeg", "webp", "gif"}
