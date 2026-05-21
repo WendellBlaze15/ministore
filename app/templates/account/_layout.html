@@ -14,11 +14,12 @@
       <nav class="acct-nav">
         <a href="{{ url_for('account.index') }}"     class="{{ 'active' if request.endpoint == 'account.index' else '' }}">🌷 Overview</a>
         <a href="{{ url_for('account.profile') }}"   class="{{ 'active' if request.endpoint == 'account.profile' else '' }}">👤 Profile</a>
-        <a href="{{ url_for('account.orders') }}"    class="{{ 'active' if request.endpoint == 'account.orders' else '' }}">📦 My orders</a>
+        <a href="{{ url_for('account.orders') }}"    class="{{ 'active' if request.endpoint in ['account.orders','orders.my_orders','orders.track'] else '' }}">📦 My orders</a>
         <a href="{{ url_for('account.tracking') }}"  class="{{ 'active' if request.endpoint == 'account.tracking' else '' }}">🚚 Track order</a>
         <a href="{{ url_for('account.wishlist') }}"  class="{{ 'active' if request.endpoint == 'account.wishlist' else '' }}">💖 Wishlist</a>
         <a href="{{ url_for('chat.room') }}"         class="{{ 'active' if request.endpoint == 'chat.room' else '' }}">💬 Chat</a>
         <a href="{{ url_for('cart.view') }}"         class="{{ 'active' if request.endpoint == 'cart.view' else '' }}">🛍️ Cart</a>
+        <a href="{{ url_for('account.settings') }}"  class="{{ 'active' if request.endpoint == 'account.settings' else '' }}">⚙️ Settings</a>
         <div style="margin-top: auto; padding-top: 18px; display: flex; flex-direction: column; gap: 8px;">
           <a href="{{ url_for('main.home') }}">← Back to shop</a>
           <a href="{{ url_for('auth.logout') }}" class="muted">Sign out</a>

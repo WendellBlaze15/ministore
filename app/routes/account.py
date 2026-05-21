@@ -1,11 +1,11 @@
-"""Customer account area: profile, orders, tracking, wishlist."""
+"""Customer account area: profile, orders, tracking, wishlist, settings."""
 from __future__ import annotations
 
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, abort, current_app
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, abort, current_app, session
 
 from app.utils.auth import login_required, current_user
 from app.utils.security import require_same_origin
-from app.services.supabase_client import get_service_client
+from app.services.supabase_client import get_service_client, get_anon_client
 
 bp = Blueprint("account", __name__)
 
@@ -27,6 +27,9 @@ def index():
     svc = get_service_client()
     profile = _profile(svc, user["id"])
     orders = []
+    active_order = None
+    total_spent = 0.0
+    orders_count = 0
     if svc:
         try:
             orders = (
@@ -37,6 +40,30 @@ def index():
                 .limit(5)
                 .execute()
             ).data or []
+        except Exception:
+            pass
+        try:
+            all_orders = (
+                svc.table("orders")
+                .select("id, status, total")
+                .eq("user_id", user["id"])
+                .execute()
+            ).data or []
+            orders_count = len(all_orders)
+            total_spent = sum(float(o.get("total") or 0) for o in all_orders)
+        except Exception:
+            pass
+        try:
+            in_flight = (
+                svc.table("orders")
+                .select("id, status, total, created_at")
+                .eq("user_id", user["id"])
+                .in_("status", ["pending", "preparing", "shipped"])
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            ).data or []
+            active_order = in_flight[0] if in_flight else None
         except Exception:
             pass
 
@@ -53,6 +80,8 @@ def index():
     return render_template(
         "account/index.html",
         profile=profile, recent_orders=orders, wishlist_count=wishlist_count,
+        active_order=active_order, total_spent=total_spent,
+        orders_count=orders_count,
     )
 
 
@@ -182,6 +211,96 @@ def wishlist():
         except Exception as exc:
             current_app.logger.warning("wishlist load failed: %s", exc)
     return render_template("account/wishlist.html", items=items)
+
+
+# -------------------- Settings + security --------------------
+
+@bp.route("/settings", methods=["GET"])
+@login_required
+def settings():
+    user = current_user()
+    svc = get_service_client()
+    return render_template("account/settings.html", profile=_profile(svc, user["id"]))
+
+
+@bp.route("/settings/password", methods=["POST"])
+@login_required
+@require_same_origin
+def change_password():
+    """Verify the user's current password, then update it via the Auth admin API."""
+    user = current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "Not signed in."}), 401
+
+    data = request.form if not request.is_json else (request.get_json(silent=True) or {})
+    current_pw = data.get("current_password") or ""
+    new_pw = data.get("new_password") or ""
+    confirm_pw = data.get("confirm_password") or ""
+
+    if not (current_pw and new_pw and confirm_pw):
+        flash("Please fill in all the password fields.", "error")
+        return redirect(url_for("account.settings"))
+    if len(new_pw) < 8:
+        flash("New password must be at least 8 characters.", "error")
+        return redirect(url_for("account.settings"))
+    if new_pw != confirm_pw:
+        flash("New passwords don't match.", "error")
+        return redirect(url_for("account.settings"))
+    if new_pw == current_pw:
+        flash("New password must be different from your current one.", "error")
+        return redirect(url_for("account.settings"))
+
+    # Re-verify current password by attempting to sign in (cheap + safe).
+    anon = get_anon_client()
+    if anon is None:
+        flash("Server is not configured.", "error")
+        return redirect(url_for("account.settings"))
+    try:
+        anon.auth.sign_in_with_password({"email": user["email"], "password": current_pw})
+    except Exception:
+        flash("Your current password is incorrect.", "error")
+        return redirect(url_for("account.settings"))
+
+    svc = get_service_client()
+    if svc is None:
+        flash("Server is not configured.", "error")
+        return redirect(url_for("account.settings"))
+    try:
+        svc.auth.admin.update_user_by_id(user["id"], {"password": new_pw})
+    except Exception as exc:
+        current_app.logger.warning("change_password failed: %s", exc)
+        flash("Could not update your password. Please try again.", "error")
+        return redirect(url_for("account.settings"))
+
+    flash("Password updated. 💖 Use your new password next time.", "success")
+    return redirect(url_for("account.settings"))
+
+
+@bp.route("/settings/delete", methods=["POST"])
+@login_required
+@require_same_origin
+def delete_account():
+    """Soft-confirmed delete: the user must type their email to confirm."""
+    user = current_user()
+    typed = (request.form.get("confirm_email") or "").strip().lower()
+    if typed != (user["email"] or "").lower():
+        flash("Type your full email to confirm deletion.", "error")
+        return redirect(url_for("account.settings"))
+
+    svc = get_service_client()
+    if svc is None:
+        flash("Server is not configured.", "error")
+        return redirect(url_for("account.settings"))
+    try:
+        svc.auth.admin.delete_user(user["id"])
+    except Exception as exc:
+        current_app.logger.warning("delete_account failed: %s", exc)
+        flash("Could not delete your account. Please contact us in chat.", "error")
+        return redirect(url_for("account.settings"))
+
+    session.clear()
+    flash("Your account has been deleted. We'll miss you 💌", "success")
+    return redirect(url_for("main.home"))
 
 
 _UUID_RE = __import__("re").compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")

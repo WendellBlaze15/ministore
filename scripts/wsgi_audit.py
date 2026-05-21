@@ -78,6 +78,12 @@ for p in products_list:
     r = probe(admin, "GET", f"/admin/products/{p['id']}/edit")
     print(f"  GET  /admin/products/{p['id'][:8]}…/edit -> {r.status_code}")
 
+print("\n=== Check-email endpoint ===")
+r = probe(public, "POST", "/auth/check-email", json={"email": ADMIN_EMAIL})
+print(f"  POST /auth/check-email                                          -> {r.status_code}")
+r = probe(public, "POST", "/auth/check-email", json={"email": "totally-new-user-1234567@example.com"})
+print(f"  POST /auth/check-email (new)                                    -> {r.status_code}")
+
 print("\n=== CUSTOMER session ===")
 admin.post(f"{BASE}/auth/logout", headers={"Origin": BASE})
 cust = requests.Session()
@@ -87,7 +93,8 @@ r = cust.post(f"{BASE}/auth/login",
 assert r.status_code in (302, 303)
 
 cust_pages = ["/account/", "/account/profile", "/account/orders", "/account/tracking",
-              "/account/wishlist", "/orders/", "/cart/", "/cart/checkout", "/chat/"]
+              "/account/wishlist", "/account/settings",
+              "/orders/", "/cart/", "/cart/checkout", "/chat/"]
 for p in cust_pages:
     r = probe(cust, "GET", p)
     print(f"  GET  {p:60s} -> {r.status_code}")

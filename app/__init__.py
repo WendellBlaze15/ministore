@@ -23,11 +23,23 @@ def create_app() -> Flask:
     # browser-side Supabase JS client). The service key is NEVER exposed.
     @app.context_processor
     def inject_globals():
+        from flask import request, session
+        endpoint = (request.endpoint or "") if request else ""
+        # Hide the public footer on the post-login dashboards (admin or
+        # customer account areas). Buyers only see the studio chrome once
+        # they've signed in.
+        in_app_area = any(endpoint.startswith(prefix) for prefix in (
+            "admin.", "account.", "orders.", "chat.", "cart.",
+        ))
+        signed_in = bool((session or {}).get("user"))
+        hide_footer = bool(signed_in and in_app_area)
         return {
             "SUPABASE_URL": app.config.get("SUPABASE_URL", ""),
             "SUPABASE_ANON_KEY": app.config.get("SUPABASE_ANON_KEY", ""),
             "APP_NAME": "Papier Lab",
             "APP_TAGLINE": "handmade with love, wrapped in pink",
+            "HIDE_FOOTER": hide_footer,
+            "IN_APP_AREA": in_app_area,
         }
 
     # Register blueprints

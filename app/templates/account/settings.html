@@ -1,0 +1,105 @@
+{% extends "account/_layout.html" %}
+{% block title %}Settings — Papier Lab{% endblock %}
+
+{% block account %}
+<header class="acct-head" data-reveal>
+  <span class="tag">settings</span>
+  <h1>Account settings ⚙️</h1>
+  <p class="muted">Manage your security, sign-in info, and account.</p>
+</header>
+
+<section class="acct-section" data-reveal>
+  <div class="panel-card">
+    <div class="panel-card-head">
+      <div class="ico-soft">🔐</div>
+      <div>
+        <h3>Change password</h3>
+        <small class="muted">Use a strong password you don't use elsewhere.</small>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('account.change_password') }}" class="acct-form" id="pwForm">
+      <div class="field">
+        <label>Current password</label>
+        <input type="password" name="current_password" required autocomplete="current-password" />
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="field">
+          <label>New password</label>
+          <input type="password" id="newPw" name="new_password" minlength="8" required autocomplete="new-password" />
+          <small class="help">At least 8 characters.</small>
+        </div>
+        <div class="field" data-field="confirm_password">
+          <label>Confirm new password</label>
+          <input type="password" id="confirmPw" name="confirm_password" minlength="8" required autocomplete="new-password" />
+          <small class="field-err" data-err></small>
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit">Update password</button>
+    </form>
+  </div>
+</section>
+
+<section class="acct-section" data-reveal>
+  <div class="panel-card">
+    <div class="panel-card-head">
+      <div class="ico-soft">📬</div>
+      <div>
+        <h3>Account info</h3>
+        <small class="muted">Read-only — change these from your profile page.</small>
+      </div>
+    </div>
+    <ul class="dotted">
+      <li><b>Email</b><span class="muted">{{ session.user.email }}</span></li>
+      <li><b>Display name</b><span class="muted">{{ session.user.name or profile.full_name or 'Friend' }}</span></li>
+      <li><b>Username</b><span class="muted">{{ profile.username or 'not set' }}</span></li>
+      <li><b>Role</b><span class="muted">{{ session.user.role | default('customer') }}</span></li>
+      <li><b>Member since</b><span class="muted">{{ (profile.created_at or '')[:10] or 'recently' }}</span></li>
+    </ul>
+    <a class="btn btn-secondary" href="{{ url_for('account.profile') }}" style="margin-top: 12px;">Edit profile →</a>
+  </div>
+</section>
+
+<section class="acct-section" data-reveal>
+  <div class="panel-card danger">
+    <div class="panel-card-head">
+      <div class="ico-soft danger">⚠️</div>
+      <div>
+        <h3>Delete account</h3>
+        <small class="muted">This will permanently remove your account, orders, and wishlist. We can't undo this.</small>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('account.delete_account') }}" class="acct-form" onsubmit="return confirm('This will permanently delete your account. Continue?')">
+      <div class="field">
+        <label>Type your email to confirm</label>
+        <input type="text" name="confirm_email" required autocomplete="off" />
+        <small class="help">We require this to make sure it's really you.</small>
+      </div>
+      <button class="btn btn-danger" type="submit">Delete my account</button>
+    </form>
+  </div>
+</section>
+
+<script>
+  (function () {
+    const pw = document.getElementById('newPw');
+    const cf = document.getElementById('confirmPw');
+    const cfWrap = cf.closest('.field');
+    const cfErr = cfWrap.querySelector('[data-err]');
+    function syncMatch() {
+      if (!cf.value) { cfWrap.classList.remove('invalid','match-ok'); cfErr.textContent=''; return; }
+      if (cf.value === pw.value && cf.value.length >= 8) {
+        cfWrap.classList.remove('invalid'); cfWrap.classList.add('match-ok');
+        cfErr.textContent = 'Passwords match ✓'; cfErr.style.color = '#2d7a47';
+      } else {
+        cfWrap.classList.remove('match-ok'); cfWrap.classList.add('invalid');
+        cfErr.textContent = "Passwords don't match yet."; cfErr.style.color = '';
+      }
+    }
+    pw.addEventListener('input', syncMatch);
+    cf.addEventListener('input', syncMatch);
+    document.getElementById('pwForm').addEventListener('submit', (e) => {
+      if (pw.value !== cf.value) { e.preventDefault(); cf.focus(); }
+    });
+  })();
+</script>
+{% endblock %}

@@ -2,29 +2,33 @@
 {% block title %}Admin · Dashboard — Papier Lab{% endblock %}
 
 {% block admin %}
-<div data-reveal>
+<header data-reveal>
   <span class="tag">dashboard</span>
   <h1 style="margin: 6px 0 4px;">Welcome back ✨</h1>
   <p class="muted">A soft little overview of your studio.</p>
-</div>
+</header>
 
-<div class="metrics" style="margin-top: 20px;">
-  <div class="metric">
+<div class="metrics metrics-grad" style="margin-top: 20px;" data-reveal>
+  <div class="metric grad-pink">
+    <div class="metric-ico">📦</div>
     <div class="lbl">Total orders</div>
     <div class="val">{{ metrics.total_orders }}</div>
     <div class="sub">{{ metrics.pending_orders }} pending</div>
   </div>
-  <div class="metric">
-    <div class="lbl">Revenue (30d)</div>
+  <div class="metric grad-peach">
+    <div class="metric-ico">💰</div>
+    <div class="lbl">Revenue · 30d</div>
     <div class="val">₱{{ "{:,.0f}".format(metrics.revenue_30d) }}</div>
     <div class="sub">All-time ₱{{ "{:,.0f}".format(metrics.revenue_all) }}</div>
   </div>
-  <div class="metric">
+  <div class="metric grad-lavender">
+    <div class="metric-ico">🛍️</div>
     <div class="lbl">Active products</div>
     <div class="val">{{ metrics.active_products }}</div>
     <div class="sub">{{ metrics.low_stock }} low stock</div>
   </div>
-  <div class="metric">
+  <div class="metric grad-mint">
+    <div class="metric-ico">💌</div>
     <div class="lbl">Customers</div>
     <div class="val">{{ metrics.customers }}</div>
     <div class="sub">{{ metrics.open_chats }} active chats</div>

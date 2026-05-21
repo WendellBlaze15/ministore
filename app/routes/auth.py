@@ -97,6 +97,55 @@ def register():
     return render_template("auth/register.html")
 
 
+def _email_exists(svc, email: str) -> bool:
+    """Robust check: look in profiles, then verify via auth admin API.
+
+    Returns True if any account already exists for this email.
+    """
+    if not svc or not email:
+        return False
+    email = email.strip().lower()
+    try:
+        rows = (svc.table("profiles").select("id").ilike("email", email)
+                  .limit(1).execute()).data or []
+        if rows:
+            return True
+    except Exception:
+        pass
+    # Profiles row may be missing if confirmation never happened — fall back
+    # to the Supabase auth admin list (small projects only).
+    try:
+        users = svc.auth.admin.list_users() or []
+        return any((getattr(u, "email", "") or "").lower() == email for u in users)
+    except Exception:
+        return False
+
+
+@bp.route("/check-email", methods=["POST"])
+def check_email():
+    """Inline AJAX check — does this email already have an account?
+
+    Used by the register form to flag duplicates as soon as the user moves
+    focus away from the email input. Never reveals partial info — always
+    returns a small JSON payload.
+    """
+    from app.services.supabase_client import get_service_client
+
+    data = request.get_json(silent=True) or request.form
+    email = (data.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return jsonify({"ok": True, "exists": False})
+
+    svc = get_service_client()
+    exists = _email_exists(svc, email)
+    return jsonify({
+        "ok": True,
+        "exists": exists,
+        "login_url": url_for("auth.login", email=email) if exists else None,
+        "forgot_url": url_for("auth.forgot", email=email) if exists else None,
+    })
+
+
 @bp.route("/register", methods=["POST"])
 def register_post():
     from app.services.supabase_client import get_service_client
@@ -142,6 +191,18 @@ def register_post():
         "region": region, "province": province, "city": city, "barangay": barangay,
     }
 
+    # Pre-check: reject duplicate emails BEFORE we hit create_user so we can
+    # offer a clean redirect to login.
+    if _email_exists(svc, email):
+        flash("That email is already registered. Please sign in or reset your password.", "error")
+        if is_json:
+            return jsonify({
+                "ok": False,
+                "error": "Email already registered.",
+                "redirect": url_for("auth.login", email=email),
+            }), 409
+        return redirect(url_for("auth.login", email=email))
+
     if username:
         try:
             dup = (svc.table("profiles").select("id").ilike("username", username)
@@ -162,7 +223,11 @@ def register_post():
         msg = str(exc)
         current_app.logger.info("admin.create_user failed: %s", exc)
         if any(kw in msg.lower() for kw in ("already", "registered", "exists")):
-            msg = "That email is already registered. Try signing in instead."
+            flash("That email is already registered. Please sign in or reset your password.", "error")
+            if is_json:
+                return jsonify({"ok": False, "error": "Email already registered.",
+                                "redirect": url_for("auth.login", email=email)}), 409
+            return redirect(url_for("auth.login", email=email))
         return _auth_error(msg, template="auth/register.html", http=400)
 
     try:
@@ -299,13 +364,27 @@ def forgot():
 @bp.route("/forgot", methods=["POST"])
 @require_same_origin
 def forgot_post():
+    """Send the 6-digit OTP, then redirect to /auth/reset with the email
+    pre-filled. Supports both plain HTML POST (preferred) and JSON.
+    """
     from app.services.otp import request_reset_code
 
-    data = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip()
+    is_json = request.is_json
+    data = request.get_json(silent=True) if is_json else request.form
+    email = (data.get("email") or "").strip().lower()
+
     ok, message = request_reset_code(email)
-    status = 200 if ok else 400
-    return jsonify({"ok": ok, "message": message}), status
+
+    if is_json:
+        status = 200 if ok else 400
+        return jsonify({"ok": ok, "message": message,
+                        "redirect": url_for("auth.reset", email=email)}), status
+
+    if ok:
+        flash(message, "success")
+        return redirect(url_for("auth.reset", email=email))
+    flash(message, "error")
+    return redirect(url_for("auth.forgot", email=email))
 
 
 @bp.route("/reset", methods=["GET"])
@@ -316,25 +395,42 @@ def reset():
 @bp.route("/reset", methods=["POST"])
 @require_same_origin
 def reset_post():
+    """Verify the OTP + set a new password. Supports plain HTML POST or JSON."""
     from app.services.otp import verify_and_consume, reset_password
 
-    data = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip()
+    is_json = request.is_json
+    data = request.get_json(silent=True) if is_json else request.form
+    email = (data.get("email") or "").strip().lower()
     code = (data.get("code") or "").strip()
     new_password = data.get("new_password") or ""
     confirm = data.get("confirm_password") or ""
 
     if new_password != confirm:
-        return jsonify({"ok": False, "error": "Passwords don't match."}), 400
+        msg = "Passwords don't match."
+        if is_json:
+            return jsonify({"ok": False, "error": msg}), 400
+        flash(msg, "error")
+        return redirect(url_for("auth.reset", email=email))
 
     ok, user_id, msg = verify_and_consume(email, code)
     if not ok:
-        return jsonify({"ok": False, "error": msg}), 400
+        if is_json:
+            return jsonify({"ok": False, "error": msg}), 400
+        flash(msg, "error")
+        return redirect(url_for("auth.reset", email=email))
 
     ok2, msg2 = reset_password(user_id, new_password)
     if not ok2:
-        return jsonify({"ok": False, "error": msg2}), 400
-    return jsonify({"ok": True, "message": msg2})
+        if is_json:
+            return jsonify({"ok": False, "error": msg2}), 400
+        flash(msg2, "error")
+        return redirect(url_for("auth.reset", email=email))
+
+    if is_json:
+        return jsonify({"ok": True, "message": msg2,
+                        "redirect": url_for("auth.login")})
+    flash("Password updated. Sign in with your new password ✨", "success")
+    return redirect(url_for("auth.login"))
 
 
 @bp.route("/session", methods=["POST"])

@@ -162,6 +162,42 @@
                        check: (v) => v === document.getElementById('password').value && v.length >= 8 },
   };
 
+  // Email duplicate detection: check on blur and warn the user with a
+  // friendly "Sign in instead" link if the email is already registered.
+  const emailInput = document.getElementById('email');
+  const emailWrap = form.querySelector('[data-field="email"]');
+  const emailErr = emailWrap?.querySelector('[data-err]');
+  let emailLast = '';
+  let emailExists = false;
+  async function checkEmailDup() {
+    const v = (emailInput.value || '').trim().toLowerCase();
+    if (!v || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return;
+    if (v === emailLast) return;
+    emailLast = v;
+    try {
+      const res = await fetch("{{ url_for('auth.check_email') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: v }),
+      });
+      const data = await res.json();
+      if (data && data.exists) {
+        emailExists = true;
+        emailWrap.classList.add('invalid');
+        if (emailErr) {
+          emailErr.innerHTML = 'That email is already registered. <a href="' + data.login_url +
+            '" style="color:var(--pink-700); font-weight:600; text-decoration:underline;">Sign in instead →</a>';
+          emailErr.style.display = 'block';
+        }
+      } else {
+        emailExists = false;
+        clearError('email');
+      }
+    } catch (_) { /* ignore */ }
+  }
+  emailInput?.addEventListener('blur', checkEmailDup);
+  emailInput?.addEventListener('change', checkEmailDup);
+
   // Phone field: block letters as you type, keep only allowed characters.
   const phone = document.getElementById('contact');
   if (phone) {
@@ -239,6 +275,16 @@
   });
 
   form.addEventListener('submit', (e) => {
+    if (emailExists) {
+      e.preventDefault();
+      emailInput.focus();
+      window.toast && window.toast(
+        'That email is already registered. Please sign in instead.',
+        { type: 'error' }
+      );
+      return;
+    }
+
     let firstInvalid = null;
     let invalidCount = 0;
     Object.entries(rules).forEach(([name, rule]) => {

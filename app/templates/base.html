@@ -30,7 +30,9 @@
     {% block content %}{% endblock %}
   </main>
 
-  {% include "_footer.html" %}
+  {% if not HIDE_FOOTER %}
+    {% include "_footer.html" %}
+  {% endif %}
   {% endblock %}
 
   <div class="toast-wrap" aria-live="polite"></div>

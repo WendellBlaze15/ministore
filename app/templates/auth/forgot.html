@@ -22,14 +22,16 @@
     <div class="auth-form">
       <span class="tag">reset password</span>
       <h1>Forgot your password?</h1>
-      <p class="muted">Pop in your email and we'll send a 6-digit code.</p>
-      <form id="forgotForm" style="margin-top: 20px;">
+      <p class="muted">Pop in your email and we'll send a 6-digit code. After hitting "Send my code" you'll be taken straight to the verification page.</p>
+
+      <form id="forgotForm" method="post" action="{{ url_for('auth.forgot_post') }}" style="margin-top: 20px;">
         <div class="field">
-          <label>Email</label>
-          <input type="email" id="email" required value="{{ prefill_email }}" />
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required value="{{ prefill_email }}" autocomplete="email" />
         </div>
         <button class="btn btn-primary btn-block" type="submit">Send my code</button>
       </form>
+
       <p class="muted" style="margin-top: 16px; font-size:.9rem;">
         Already have a code? <a href="{{ url_for('auth.reset') }}" style="color: var(--pink-600); font-weight: 600;">Enter it here →</a>
       </p>
@@ -42,33 +44,10 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="module">
-  import { toast } from "{{ url_for('static', filename='js/main.js') }}";
-  document.getElementById('forgotForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('email').value.trim();
+<script>
+  document.getElementById('forgotForm').addEventListener('submit', (e) => {
     const btn = e.target.querySelector('button[type=submit]');
-    btn.disabled = true; btn.textContent = 'Sending…';
-    try {
-      const res = await fetch("{{ url_for('auth.forgot_post') }}", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        toast(data.message || 'Code sent! Check your email 💌', { type: 'success' });
-        setTimeout(() => {
-          window.location.href = "{{ url_for('auth.reset') }}?email=" + encodeURIComponent(email);
-        }, 700);
-      } else {
-        toast(data.message || data.error || 'Could not send the code.', { type: 'error' });
-        btn.disabled = false; btn.textContent = 'Send my code';
-      }
-    } catch (err) {
-      toast('Network error — please try again.', { type: 'error' });
-      btn.disabled = false; btn.textContent = 'Send my code';
-    }
+    btn.disabled = true; btn.textContent = 'Sending code…';
   });
 </script>
 {% endblock %}

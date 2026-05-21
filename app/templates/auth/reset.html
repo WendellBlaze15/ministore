@@ -24,25 +24,25 @@
       <h1>Reset your password</h1>
       <p class="muted">Didn't get a code? <a href="{{ url_for('auth.forgot') }}" style="color: var(--pink-600); font-weight: 600;">Resend →</a></p>
 
-      <form id="resetForm" style="margin-top: 20px;">
+      <form id="resetForm" method="post" action="{{ url_for('auth.reset_post') }}" style="margin-top: 20px;">
         <div class="field">
-          <label>Email</label>
-          <input type="email" id="email" required value="{{ prefill_email }}" />
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required value="{{ prefill_email }}" autocomplete="email" />
         </div>
         <div class="field">
-          <label>6-digit code</label>
-          <input type="text" id="code" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
-                 style="letter-spacing: 12px; text-align: center; font-size: 1.3rem;
-                 font-weight: 700;" autocomplete="one-time-code" />
+          <label for="code">6-digit code</label>
+          <input type="text" id="code" name="code" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                 style="letter-spacing: 12px; text-align: center; font-size: 1.3rem; font-weight: 700;"
+                 autocomplete="one-time-code" />
         </div>
         <div class="field">
-          <label>New password</label>
-          <input type="password" id="new_password" minlength="8" required />
+          <label for="new_password">New password</label>
+          <input type="password" id="new_password" name="new_password" minlength="8" required autocomplete="new-password" />
           <small class="help">At least 8 characters.</small>
         </div>
         <div class="field" data-field="confirm_password">
-          <label>Confirm new password</label>
-          <input type="password" id="confirm_password" minlength="8" required />
+          <label for="confirm_password">Confirm new password</label>
+          <input type="password" id="confirm_password" name="confirm_password" minlength="8" required autocomplete="new-password" />
           <small class="field-err" data-err></small>
         </div>
         <button class="btn btn-primary btn-block" type="submit" style="margin-top: 8px;">Set new password</button>
@@ -64,57 +64,35 @@
   .field.match-ok .field-err { display: block; }
   .field .help { display: block; color: var(--ink-500); font-size: .82rem; margin-top: 4px; }
 </style>
-<script type="module">
-  import { toast } from "{{ url_for('static', filename='js/main.js') }}";
-
-  // Real-time match feedback for new password / confirm.
-  const pw = document.getElementById('new_password');
-  const cf = document.getElementById('confirm_password');
-  const cfWrap = cf.closest('.field');
-  const cfErr = cfWrap.querySelector('[data-err]');
-  function syncMatch() {
-    if (!cf.value) { cfWrap.classList.remove('invalid','match-ok'); cfErr.textContent=''; return; }
-    if (cf.value === pw.value && cf.value.length >= 8) {
-      cfWrap.classList.remove('invalid'); cfWrap.classList.add('match-ok');
-      cfErr.textContent = 'Passwords match ✓'; cfErr.style.color = '#2d7a47';
-    } else {
-      cfWrap.classList.remove('match-ok'); cfWrap.classList.add('invalid');
-      cfErr.textContent = "Passwords don't match yet."; cfErr.style.color = '';
-    }
-  }
-  pw.addEventListener('input', syncMatch);
-  cf.addEventListener('input', syncMatch);
-
-  document.getElementById('resetForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('email').value.trim();
-    const code = document.getElementById('code').value.trim();
-    const new_password = document.getElementById('new_password').value;
-    const confirm_password = document.getElementById('confirm_password').value;
-    if (new_password !== confirm_password) {
-      toast("Passwords don't match.", { type: 'error' });
-      return;
-    }
-    const btn = e.target.querySelector('button[type=submit]');
-    btn.disabled = true; btn.textContent = 'Updating…';
-    try {
-      const res = await fetch("{{ url_for('auth.reset_post') }}", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code, new_password, confirm_password }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        toast('Password updated! Sign in with your new password ✨', { type: 'success' });
-        setTimeout(() => window.location.href = "{{ url_for('auth.login') }}", 900);
+<script>
+  (function () {
+    const pw = document.getElementById('new_password');
+    const cf = document.getElementById('confirm_password');
+    const cfWrap = cf.closest('.field');
+    const cfErr = cfWrap.querySelector('[data-err]');
+    function syncMatch() {
+      if (!cf.value) { cfWrap.classList.remove('invalid','match-ok'); cfErr.textContent=''; return; }
+      if (cf.value === pw.value && cf.value.length >= 8) {
+        cfWrap.classList.remove('invalid'); cfWrap.classList.add('match-ok');
+        cfErr.textContent = 'Passwords match ✓'; cfErr.style.color = '#2d7a47';
       } else {
-        toast(data.error || 'Could not reset password.', { type: 'error' });
-        btn.disabled = false; btn.textContent = 'Set new password';
+        cfWrap.classList.remove('match-ok'); cfWrap.classList.add('invalid');
+        cfErr.textContent = "Passwords don't match yet."; cfErr.style.color = '';
       }
-    } catch (err) {
-      toast('Network error — please try again.', { type: 'error' });
-      btn.disabled = false; btn.textContent = 'Set new password';
     }
-  });
+    pw.addEventListener('input', syncMatch);
+    cf.addEventListener('input', syncMatch);
+
+    document.getElementById('resetForm').addEventListener('submit', (e) => {
+      if (pw.value !== cf.value) {
+        e.preventDefault();
+        cf.focus();
+        if (window.toast) window.toast("Passwords don't match.", { type: 'error' });
+        return;
+      }
+      const btn = e.target.querySelector('button[type=submit]');
+      btn.disabled = true; btn.textContent = 'Updating…';
+    });
+  })();
 </script>
 {% endblock %}

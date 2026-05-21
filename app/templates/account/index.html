@@ -8,36 +8,77 @@
   <p class="muted">Welcome back. Here's a peek at your latest orders and goodies.</p>
 </header>
 
-<section class="acct-stats" data-reveal>
-  <div class="acct-card">
+{% if active_order %}
+<section class="acct-section" data-reveal>
+  <a href="{{ url_for('orders.track', order_id=active_order.id) }}" class="active-order-banner">
+    <div class="ao-ico">
+      {% if active_order.status == 'pending' %}🧾
+      {% elif active_order.status == 'preparing' %}✂️
+      {% elif active_order.status == 'shipped' %}🚚
+      {% else %}📦{% endif %}
+    </div>
+    <div style="flex:1;">
+      <small class="muted" style="display:block;">Order in progress</small>
+      <b style="font-size:1.05rem;">#{{ active_order.id[:8] }} — <span class="pill pill-{{ active_order.status }}">{{ active_order.status }}</span></b>
+      <small class="muted" style="display:block; margin-top: 2px;">
+        Placed {{ active_order.created_at[:10] }} · ₱{{ '%.2f' | format(active_order.total) }}
+      </small>
+    </div>
+    <span class="ao-arr">Track →</span>
+  </a>
+</section>
+{% endif %}
+
+<section class="acct-stats stats-4" data-reveal>
+  <div class="acct-card grad-pink">
     <div class="ico">📦</div>
-    <b>{{ recent_orders | length }}</b>
-    <small class="muted">recent orders</small>
+    <b>{{ orders_count }}</b>
+    <small class="muted">orders placed</small>
   </div>
-  <div class="acct-card">
+  <div class="acct-card grad-peach">
+    <div class="ico">🎁</div>
+    <b>₱{{ '%.2f' | format(total_spent) }}</b>
+    <small class="muted">total spent</small>
+  </div>
+  <div class="acct-card grad-lavender">
     <div class="ico">💖</div>
     <b>{{ wishlist_count }}</b>
-    <small class="muted">in your wishlist</small>
+    <small class="muted">in wishlist</small>
   </div>
-  <div class="acct-card">
+  <div class="acct-card grad-mint">
     <div class="ico">📍</div>
     {% if profile.address %}
-      <b>{{ (profile.address[:24] + '…') if (profile.address|length > 24) else profile.address }}</b>
+      <b style="font-size: 1rem;">{{ (profile.address[:22] + '…') if (profile.address|length > 22) else profile.address }}</b>
       <small class="muted">delivery address</small>
     {% else %}
       <b><a href="{{ url_for('account.profile') }}" style="color:var(--pink-600)">Add address</a></b>
       <small class="muted">delivery address</small>
     {% endif %}
   </div>
-  <div class="acct-card">
-    <div class="ico">📞</div>
-    {% if profile.contact_number %}
-      <b>{{ profile.contact_number }}</b>
-      <small class="muted">contact number</small>
-    {% else %}
-      <b><a href="{{ url_for('account.profile') }}" style="color:var(--pink-600)">Add number</a></b>
-      <small class="muted">contact number</small>
-    {% endif %}
+</section>
+
+<section class="acct-section" data-reveal>
+  <div class="quick-actions">
+    <a class="qa-card" href="{{ url_for('products.shop') }}">
+      <div class="qa-ico">🛍️</div>
+      <b>Browse the shop</b>
+      <small class="muted">Fresh restocks weekly</small>
+    </a>
+    <a class="qa-card" href="{{ url_for('account.wishlist') }}">
+      <div class="qa-ico">💖</div>
+      <b>My wishlist</b>
+      <small class="muted">{{ wishlist_count }} saved item{{ 's' if wishlist_count != 1 else '' }}</small>
+    </a>
+    <a class="qa-card" href="{{ url_for('chat.room') }}">
+      <div class="qa-ico">💬</div>
+      <b>Chat with us</b>
+      <small class="muted">Custom orders, delivery Q's</small>
+    </a>
+    <a class="qa-card" href="{{ url_for('account.settings') }}">
+      <div class="qa-ico">⚙️</div>
+      <b>Settings</b>
+      <small class="muted">Security & account</small>
+    </a>
   </div>
 </section>
 
