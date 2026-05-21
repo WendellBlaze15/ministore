@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Verify your email — Papier Lab{% endblock %}
+
+{% block layout %}
+{% include "_navbar.html" %}
+<div class="auth-wrap">
+  <aside class="auth-art">
+    <div class="blobs"><span></span><span></span></div>
+    <a href="{{ url_for('main.home') }}" class="brand" style="color: var(--pink-700);">
+      <span class="brand-mark"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Papier Lab" /></span>
+      <span>Papier Lab</span>
+    </a>
+    <div style="z-index:1; display:flex; flex-direction:column; gap: 18px; align-items: flex-start;">
+      <div class="brand-mark brand-mark--lg"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Papier Lab" /></div>
+      <h2 style="margin: 0;">One last step ✨</h2>
+      <p class="muted" style="max-width: 320px;">
+        We just sent a 6-digit code to your inbox. Pop it in to activate your account
+        and start shopping the pastel goodies.
+      </p>
+    </div>
+    <p class="muted" style="z-index:1;">code expires in 15 minutes</p>
+  </aside>
+
+  <section class="auth-form-wrap">
+    <div class="auth-form">
+      <span class="tag">verify email</span>
+      <h1>Check your email 💌</h1>
+      <p class="muted">Enter the 6-digit code we sent to <b id="emailEcho">{{ prefill_email or 'your inbox' }}</b>.</p>
+
+      <form id="verifyForm" style="margin-top: 22px;">
+        <input type="hidden" id="email" value="{{ prefill_email or '' }}" />
+        <div class="otp-row" id="otpRow">
+          <input type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code" />
+          <input type="text" inputmode="numeric" maxlength="1" />
+          <input type="text" inputmode="numeric" maxlength="1" />
+          <input type="text" inputmode="numeric" maxlength="1" />
+          <input type="text" inputmode="numeric" maxlength="1" />
+          <input type="text" inputmode="numeric" maxlength="1" />
+        </div>
+
+        <details style="margin: 14px 0 0;">
+          <summary class="muted" style="cursor: pointer; font-size: .85rem;">Auto-sign-in after verification?</summary>
+          <div class="field" style="margin-top: 10px;">
+            <label>Password (optional — for instant sign-in)</label>
+            <input type="password" id="password" autocomplete="current-password" placeholder="Same password you used to register" />
+            <small class="help">Leave blank to be redirected to the sign-in page after verification.</small>
+          </div>
+        </details>
+
+        <button class="btn btn-primary btn-block" type="submit" style="margin-top: 16px;">Verify & continue →</button>
+      </form>
+
+      <div class="auth-divider">didn't get it?</div>
+      <button id="resendBtn" class="btn btn-secondary btn-block">Resend code 💌</button>
+
+      <div class="auth-divider">already verified?</div>
+      <a class="btn btn-ghost btn-block" href="{{ url_for('auth.login') }}">Go to sign in →</a>
+    </div>
+  </section>
+</div>
+{% include "_footer.html" %}
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .otp-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .otp-row input {
+    height: 56px; text-align: center; font-size: 1.5rem; font-weight: 700;
+    border-radius: 14px; border: 2px solid var(--border); background: var(--surface);
+    color: var(--pink-700); outline: none; transition: all .15s ease;
+  }
+  .otp-row input:focus { border-color: var(--pink-400); box-shadow: 0 0 0 4px rgba(255,141,180,.18); }
+  .otp-row input.filled { border-color: var(--pink-500); background: var(--pink-100); }
+</style>
+<script>
+(function () {
+  const inputs = Array.from(document.querySelectorAll('#otpRow input'));
+  const form   = document.getElementById('verifyForm');
+  const email  = document.getElementById('email');
+  const pwd    = document.getElementById('password');
+  const resend = document.getElementById('resendBtn');
+
+  inputs.forEach((inp, i) => {
+    inp.addEventListener('input', () => {
+      inp.value = inp.value.replace(/\D/g, '').slice(0, 1);
+      inp.classList.toggle('filled', !!inp.value);
+      if (inp.value && i < inputs.length - 1) inputs[i + 1].focus();
+    });
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !inp.value && i > 0) inputs[i - 1].focus();
+    });
+    inp.addEventListener('paste', (e) => {
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      const digits = text.replace(/\D/g, '').slice(0, inputs.length).split('');
+      if (!digits.length) return;
+      e.preventDefault();
+      digits.forEach((d, idx) => {
+        if (inputs[idx]) {
+          inputs[idx].value = d;
+          inputs[idx].classList.add('filled');
+        }
+      });
+      inputs[Math.min(digits.length, inputs.length - 1)].focus();
+    });
+  });
+
+  inputs[0]?.focus();
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = inputs.map((i) => i.value).join('');
+    if (code.length !== 6) {
+      window.toast && window.toast('Please enter all 6 digits.', { type: 'error' });
+      return;
+    }
+    const btn = form.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Verifying…';
+    try {
+      const res = await fetch("{{ url_for('auth.verify_post') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.value, code, password: pwd.value }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        window.toast && window.toast(data.error || 'Could not verify.', { type: 'error' });
+        btn.disabled = false; btn.textContent = 'Verify & continue →';
+        inputs.forEach((i) => { i.value = ''; i.classList.remove('filled'); });
+        inputs[0].focus();
+        return;
+      }
+      window.toast && window.toast(data.message || 'Verified! 🌸', { type: 'success' });
+      setTimeout(() => { window.location.href = data.redirect || '/'; }, 600);
+    } catch (err) {
+      window.toast && window.toast('Network error. Please try again.', { type: 'error' });
+      btn.disabled = false; btn.textContent = 'Verify & continue →';
+    }
+  });
+
+  resend.addEventListener('click', async () => {
+    if (!email.value) {
+      window.toast && window.toast('Please open the link from your email.', { type: 'error' });
+      return;
+    }
+    resend.disabled = true; resend.textContent = 'Sending…';
+    try {
+      const res = await fetch("{{ url_for('auth.verify_resend') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.value }),
+      });
+      const data = await res.json();
+      window.toast && window.toast(data.message || data.error || 'Done.',
+                                    { type: data.ok ? 'success' : 'error' });
+    } catch (err) {
+      window.toast && window.toast('Network error.', { type: 'error' });
+    } finally {
+      setTimeout(() => { resend.disabled = false; resend.textContent = 'Resend code 💌'; }, 5000);
+    }
+  });
+})();
+</script>
+{% endblock %}

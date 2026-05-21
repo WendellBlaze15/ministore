@@ -120,3 +120,38 @@ def mark_seen():
     except Exception:
         pass
     return jsonify({"ok": True})
+
+
+@bp.route("/messages/<chat_id>")
+@login_required
+def fetch_messages(chat_id: str):
+    """HTTP polling fallback used when Supabase Realtime/CDN isn't reachable."""
+    user = current_user()
+    svc = get_service_client()
+    if not svc:
+        return jsonify({"ok": False, "messages": []}), 500
+
+    try:
+        chat = (svc.table("chats").select("user_id").eq("id", chat_id).single().execute()).data
+        if not chat:
+            return jsonify({"ok": False, "messages": []}), 404
+        if chat["user_id"] != user["id"] and not is_admin():
+            return jsonify({"ok": False, "messages": []}), 403
+    except Exception:
+        return jsonify({"ok": False, "messages": []}), 500
+
+    since = request.args.get("since")
+    query = (
+        svc.table("messages")
+        .select("id, body, sender_id, sender_role, seen, created_at")
+        .eq("chat_id", chat_id)
+        .order("created_at", desc=False)
+        .limit(200)
+    )
+    if since:
+        query = query.gt("created_at", since)
+    try:
+        rows = (query.execute()).data or []
+    except Exception:
+        rows = []
+    return jsonify({"ok": True, "messages": rows})

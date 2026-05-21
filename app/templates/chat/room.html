@@ -11,7 +11,7 @@
         <small class="muted">{% if is_admin_view %}Customer conversation{% else %}Usually replies within a few hours 🌸{% endif %}</small>
       </div>
       {% if is_admin_view %}
-      <a class="btn btn-sm btn-secondary" style="margin-left:auto;" href="{{ url_for('admin.chats') }}">← Back to chats</a>
+      <a class="btn btn-sm btn-secondary" style="margin-left:auto;" href="{{ url_for('admin.messages') }}">← Back to inbox</a>
       {% endif %}
     </div>
 
@@ -31,32 +31,34 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="module">
-  import { supabase } from "{{ url_for('static', filename='js/supabase.js') }}";
-  import { toast } from "{{ url_for('static', filename='js/main.js') }}";
-
+<script>
+(function () {
   const chatId  = "{{ chat_id or '' }}";
-  const me      = window.__PL__.CURRENT_USER || {};
-  const isAdmin = me.role === 'admin';
+  const me      = (window.__PL__ && window.__PL__.CURRENT_USER) || {};
   const body    = document.getElementById('chatBody');
   const form    = document.getElementById('chatForm');
   const input   = document.getElementById('chatInput');
+  if (!chatId) return;
 
-  if (!chatId) {
-    // nothing to render
-  } else if (!supabase) {
-    body.innerHTML = '<div class="muted center-text" style="margin:auto; padding:24px;">Chat unavailable — Supabase env vars missing.</div>';
-  } else {
-    bootstrap();
-  }
+  const known = new Set();
+  let lastTs = null;
+  let realtime = null;
 
   function formatTime(iso) {
-    try {
-      return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch { return ''; }
+    try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+    catch (e) { return ''; }
   }
-
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  }
+  function clearPlaceholder() {
+    if (body.firstChild && body.firstChild.classList && body.firstChild.classList.contains('muted')) {
+      body.innerHTML = '';
+    }
+  }
   function appendMessage(msg) {
+    if (!msg || !msg.id || known.has(msg.id)) return;
+    known.add(msg.id);
     const isMine = msg.sender_id === me.id;
     const div = document.createElement('div');
     div.className = 'bubble ' + (isMine ? 'me' : 'them');
@@ -64,69 +66,84 @@
     div.innerHTML = `${escapeHtml(msg.body)}<small>${formatTime(msg.created_at)}${isMine ? ` <span class="seen">${msg.seen ? '✓✓' : '✓'}</span>` : ''}</small>`;
     body.appendChild(div);
     body.scrollTop = body.scrollHeight;
+    if (msg.created_at && (!lastTs || msg.created_at > lastTs)) lastTs = msg.created_at;
   }
-  function escapeHtml(s) {
-    return String(s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-  }
-  function clearPlaceholder() {
-    if (body.firstChild && body.firstChild.classList && body.firstChild.classList.contains('muted')) body.innerHTML = '';
-  }
-
-  async function bootstrap() {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('chat_id', chatId)
-      .order('created_at', { ascending: true })
-      .limit(200);
-    if (error) {
-      toast(error.message, { type: 'error' });
-      return;
-    }
-    if (data && data.length) {
-      clearPlaceholder();
-      data.forEach(appendMessage);
-    }
-    markSeen();
-
-    supabase
-      .channel(`chat-${chatId}`)
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}`,
-      }, (payload) => {
-        clearPlaceholder();
-        appendMessage(payload.new);
-        markSeen();
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}`,
-      }, (payload) => {
-        const node = body.querySelector(`[data-id="${payload.new.id}"] .seen`);
-        if (node) node.textContent = payload.new.seen ? '✓✓' : '✓';
-      })
-      .subscribe();
-  }
-
   function markSeen() {
     fetch("{{ url_for('chat.mark_seen') }}", {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId }),
-    });
+    }).catch(() => {});
   }
+
+  async function pollOnce() {
+    try {
+      const url = "{{ url_for('chat.fetch_messages', chat_id='__CID__') }}".replace('__CID__', chatId)
+                  + (lastTs ? `?since=${encodeURIComponent(lastTs)}` : '');
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.ok && data.messages && data.messages.length) {
+        clearPlaceholder();
+        data.messages.forEach(appendMessage);
+        markSeen();
+      }
+    } catch (e) { /* network blip, retry next tick */ }
+  }
+
+  async function trySupabaseRealtime() {
+    try {
+      const mod = await import("{{ url_for('static', filename='js/supabase.js') }}");
+      const sb = mod.supabase;
+      if (!sb) return false;
+
+      const { data } = await sb.from('messages').select('*')
+        .eq('chat_id', chatId).order('created_at', { ascending: true }).limit(200);
+      if (data && data.length) { clearPlaceholder(); data.forEach(appendMessage); }
+      markSeen();
+
+      realtime = sb.channel(`chat-${chatId}`)
+        .on('postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
+            (payload) => { clearPlaceholder(); appendMessage(payload.new); markSeen(); })
+        .on('postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
+            (payload) => {
+              const node = body.querySelector(`[data-id="${payload.new.id}"] .seen`);
+              if (node) node.textContent = payload.new.seen ? '✓✓' : '✓';
+            })
+        .subscribe();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  (async function bootstrap() {
+    await pollOnce();
+    const realtimeOk = await trySupabaseRealtime();
+    const pollMs = realtimeOk ? 8000 : 2500;
+    setInterval(pollOnce, pollMs);
+  })();
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const body = input.value.trim();
-    if (!body) return;
+    const text = input.value.trim();
+    if (!text) return;
     input.value = '';
-    const res = await fetch("{{ url_for('chat.send_message') }}", {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, body }),
-    });
-    const data = await res.json();
-    if (!data.ok) toast(data.error || 'Could not send', { type: 'error' });
+    try {
+      const res = await fetch("{{ url_for('chat.send_message') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, body: text }),
+      });
+      const data = await res.json();
+      if (data.ok && data.message) appendMessage(data.message);
+      else if (!data.ok) window.toast && window.toast(data.error || 'Could not send', { type: 'error' });
+    } catch (err) {
+      window.toast && window.toast('Network error. Try again.', { type: 'error' });
+    }
   });
+})();
 </script>
 {% endblock %}

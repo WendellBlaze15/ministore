@@ -55,9 +55,14 @@ def login_post():
         result = supa.auth.sign_in_with_password({"email": email, "password": password})
     except Exception as exc:
         current_app.logger.info("sign_in_with_password failed: %s", exc)
-        msg = str(exc)
-        if "invalid" in msg.lower() or "email" in msg.lower() and "confirm" in msg.lower():
-            msg = "Invalid email or password — or your email isn't confirmed yet."
+        msg_low = str(exc).lower()
+        if "email" in msg_low and ("confirm" in msg_low or "not confirmed" in msg_low):
+            if not is_json:
+                flash("Your email isn't verified yet. Enter the 6-digit code we sent you.", "info")
+                return redirect(url_for("auth.verify", email=email))
+            return jsonify({"ok": False, "error": "email_not_verified",
+                            "redirect": url_for("auth.verify", email=email)}), 400
+        msg = "Invalid email or password. Please try again."
         return _auth_error(msg, template="auth/login.html", next=next_url, http=400, email=email)
 
     sess = getattr(result, "session", None)
@@ -94,10 +99,8 @@ def register():
 
 @bp.route("/register", methods=["POST"])
 def register_post():
-    """Server-side registration. Uses the service-role client so the account
-    is created already-confirmed — buyers can sign in immediately, no email
-    confirmation round-trip required."""
-    from app.services.supabase_client import get_service_client, get_anon_client
+    from app.services.supabase_client import get_service_client
+    from app.services.signup_otp import issue_signup_code
 
     is_json = request.is_json
     data = request.get_json(silent=True) if is_json else request.form
@@ -129,9 +132,8 @@ def register_post():
         return _auth_error("Server is not configured for Supabase yet.",
                             template="auth/register.html", http=500)
 
-    # Compose a single readable address string for legacy fields and shipping.
-    composed_address_parts = [p for p in (address, barangay, city, province, region) if p]
-    composed_address = ", ".join(composed_address_parts) if composed_address_parts else ""
+    composed_parts = [p for p in (address, barangay, city, province, region) if p]
+    composed_address = ", ".join(composed_parts) if composed_parts else ""
 
     metadata = {
         "full_name": full_name, "username": username,
@@ -140,7 +142,6 @@ def register_post():
         "region": region, "province": province, "city": city, "barangay": barangay,
     }
 
-    # 1) Reject obvious duplicate username early.
     if username:
         try:
             dup = (svc.table("profiles").select("id").ilike("username", username)
@@ -151,45 +152,22 @@ def register_post():
         except Exception:
             pass
 
-    # 2) Create the user already-confirmed so buyers can sign in immediately.
     try:
         created = svc.auth.admin.create_user({
             "email": email, "password": password,
-            "email_confirm": True, "user_metadata": metadata,
+            "email_confirm": False, "user_metadata": metadata,
         })
         new_user = getattr(created, "user", None) or created
     except Exception as exc:
         msg = str(exc)
         current_app.logger.info("admin.create_user failed: %s", exc)
-        if "already" in msg.lower() or "registered" in msg.lower() or "exists" in msg.lower():
+        if any(kw in msg.lower() for kw in ("already", "registered", "exists")):
             msg = "That email is already registered. Try signing in instead."
         return _auth_error(msg, template="auth/register.html", http=400)
 
-    # 3) Sign in to mint a session for the new user.
-    anon = get_anon_client()
-    try:
-        result = anon.auth.sign_in_with_password({"email": email, "password": password})
-    except Exception as exc:
-        current_app.logger.warning("post-register sign_in failed: %s", exc)
-        return _auth_error("Account created — please sign in to continue.",
-                            template="auth/login.html", http=200)
-
-    sess = result.session
-    user = result.user
-    verified_user = {
-        "id": user.id, "email": user.email,
-        "user_metadata": getattr(user, "user_metadata", None) or {},
-    }
-    store_user_in_session(verified_user, sess.access_token, sess.refresh_token)
-    sess_user = current_user() or {}
-    ensure_profile_row(
-        user_id=sess_user.get("id", ""), email=sess_user.get("email", ""),
-        full_name=full_name, role=sess_user.get("role", "customer"),
-    )
-
-    # Patch the rest of the profile fields now.
     try:
         svc.table("profiles").update({
+            "full_name": full_name,
             "username": username or None,
             "contact_number": contact_number,
             "address": composed_address,
@@ -197,10 +175,97 @@ def register_post():
     except Exception as exc:
         current_app.logger.warning("post-register profile patch failed: %s", exc)
 
+    ok, message = issue_signup_code(new_user.id, email)
+    if not ok:
+        try:
+            svc.auth.admin.delete_user(new_user.id)
+        except Exception:
+            pass
+        return _auth_error(message, template="auth/register.html", http=400)
+
     if is_json:
-        return jsonify({"ok": True, "redirect": url_for("main.home")})
-    flash("Welcome to Papier Lab! 🌸", "success")
-    return redirect(url_for("main.home"))
+        return jsonify({"ok": True, "redirect": url_for("auth.verify", email=email)})
+    flash(message, "success")
+    return redirect(url_for("auth.verify", email=email))
+
+
+@bp.route("/verify", methods=["GET"])
+def verify():
+    return render_template("auth/verify.html", prefill_email=request.args.get("email", ""))
+
+
+@bp.route("/verify", methods=["POST"])
+@require_same_origin
+def verify_post():
+    from app.services.signup_otp import verify_signup_code
+    from app.services.supabase_client import get_anon_client
+
+    data = request.get_json(silent=True) if request.is_json else request.form
+    email = (data.get("email") or "").strip()
+    code = (data.get("code") or "").strip()
+    password = data.get("password") or ""
+
+    ok, user_id, msg = verify_signup_code(email, code)
+    if not ok:
+        return jsonify({"ok": False, "error": msg}), 400
+
+    if not password:
+        return jsonify({"ok": True, "message": msg, "redirect": url_for("auth.login")})
+
+    anon = get_anon_client()
+    try:
+        result = anon.auth.sign_in_with_password({"email": email, "password": password})
+        sess = result.session
+        user = result.user
+        verified_user = {
+            "id": user.id, "email": user.email,
+            "user_metadata": getattr(user, "user_metadata", None) or {},
+        }
+        store_user_in_session(verified_user, sess.access_token, sess.refresh_token)
+        sess_user = current_user() or {}
+        ensure_profile_row(
+            user_id=sess_user.get("id", ""), email=sess_user.get("email", ""),
+            full_name=sess_user.get("name", ""), role=sess_user.get("role", "customer"),
+        )
+        target = url_for("admin.dashboard") if sess_user.get("role") == "admin" else url_for("main.home")
+        return jsonify({"ok": True, "message": msg, "redirect": target})
+    except Exception as exc:
+        current_app.logger.warning("post-verify sign_in failed: %s", exc)
+        return jsonify({"ok": True, "message": msg, "redirect": url_for("auth.login")})
+
+
+@bp.route("/verify/resend", methods=["POST"])
+@require_same_origin
+def verify_resend():
+    from app.services.signup_otp import issue_signup_code
+    from app.services.supabase_client import get_service_client
+
+    data = request.get_json(silent=True) if request.is_json else request.form
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"ok": False, "error": "Please provide your email."}), 400
+
+    svc = get_service_client()
+    if not svc:
+        return jsonify({"ok": False, "error": "Server not configured."}), 500
+
+    try:
+        users = svc.auth.admin.list_users()
+    except Exception:
+        users = []
+    match = None
+    for u in users:
+        if (getattr(u, "email", "") or "").lower() == email:
+            match = u
+            break
+    if not match:
+        return jsonify({"ok": True, "message": "If that email is pending, a new code is on its way."})
+
+    if getattr(match, "email_confirmed_at", None):
+        return jsonify({"ok": False, "error": "This account is already verified. Please sign in."}), 400
+
+    ok, msg = issue_signup_code(match.id, email)
+    return jsonify({"ok": ok, "message": msg, "error": None if ok else msg})
 
 
 def _safe_next(value: str | None, fallback_endpoint: str) -> str:
