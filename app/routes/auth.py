@@ -178,9 +178,14 @@ def register_post():
     barangay = (data.get("barangay") or "").strip()[:120]
     password = data.get("password") or ""
     confirm_password = data.get("confirm_password") or ""
+    agree_terms = data.get("agree_terms")
+    agreed = str(agree_terms).lower() in ("1", "true", "on", "yes") if agree_terms else False
 
     if not (full_name and email and contact_number and password):
         return _auth_error("Please fill in name, email, contact number and password.",
+                            template="auth/register.html", http=400)
+    if not agreed:
+        return _auth_error("Please agree to our Privacy Policy and Terms to continue.",
                             template="auth/register.html", http=400)
     if len(password) < 8:
         return _auth_error("Password must be at least 8 characters.",

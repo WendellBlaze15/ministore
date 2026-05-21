@@ -29,12 +29,40 @@ export function toast(message, { type = 'info', title = '' } = {}) {
 // Expose for templates / inline calls
 window.toast = toast;
 
-// ---------- Mobile menu ----------
-document.addEventListener('click', (e) => {
-  const trigger = e.target.closest('[data-menu-toggle]');
-  if (trigger) {
-    document.querySelector('.nav-links')?.classList.toggle('open');
+// ---------- Mobile drawer ----------
+function setDrawer(open) {
+  const drawer = document.getElementById('mobileDrawer');
+  const backdrop = document.getElementById('mobileDrawerBackdrop');
+  const trigger = document.querySelector('[data-menu-toggle]');
+  if (!drawer) return;
+  drawer.classList.toggle('open', open);
+  if (backdrop) backdrop.classList.toggle('open', open);
+  if (open) {
+    drawer.hidden = false;
+    if (backdrop) backdrop.hidden = false;
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = '';
+    setTimeout(() => {
+      if (!drawer.classList.contains('open')) {
+        drawer.hidden = true;
+        if (backdrop) backdrop.hidden = true;
+      }
+    }, 280);
   }
+  if (trigger) trigger.setAttribute('aria-expanded', String(!!open));
+}
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-menu-toggle]')) {
+    const drawer = document.getElementById('mobileDrawer');
+    setDrawer(!(drawer && drawer.classList.contains('open')));
+    return;
+  }
+  if (e.target.closest('[data-menu-close]')) { setDrawer(false); return; }
+  if (e.target.id === 'mobileDrawerBackdrop') { setDrawer(false); return; }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') setDrawer(false);
 });
 
 // ---------- Theme toggle ----------

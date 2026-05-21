@@ -30,7 +30,8 @@
       {% if session.get('user') %}
         <a href="{{ url_for('cart.checkout') }}" id="goCheckout" class="btn btn-primary btn-block" style="margin-top: 14px;">Go to checkout →</a>
       {% else %}
-        <a href="{{ url_for('auth.login', next=url_for('cart.checkout')) }}" class="btn btn-primary btn-block" style="margin-top: 14px;">Sign in to checkout</a>
+        <a href="{{ url_for('auth.register', next=url_for('cart.checkout')) }}" class="btn btn-primary btn-block" style="margin-top: 14px;">Create account to checkout</a>
+        <a href="{{ url_for('auth.login', next=url_for('cart.checkout')) }}" class="btn btn-secondary btn-block" style="margin-top: 8px;">Already a pen pal? Sign in</a>
       {% endif %}
       <a href="{{ url_for('products.shop') }}" class="btn btn-ghost btn-block" style="margin-top: 8px;">Continue shopping</a>
     </aside>

@@ -67,9 +67,66 @@
         <a class="btn btn-sm btn-secondary hide-on-mobile" href="{{ url_for('auth.login') }}">Sign in</a>
         <a class="btn btn-sm btn-primary hide-on-mobile" href="{{ url_for('auth.register') }}">Join</a>
       {% endif %}
-      {% if not in_sidebar_area %}
-      <button class="icon-btn menu-toggle" data-menu-toggle aria-label="Menu">☰</button>
+      <button class="icon-btn menu-toggle" data-menu-toggle aria-label="Menu" aria-expanded="false">☰</button>
+    </div>
+  </div>
+
+  {# ---------- Mobile drawer (works for public, admin, account) ---------- #}
+  <div class="mobile-drawer" id="mobileDrawer" hidden>
+    <div class="md-header">
+      <strong>Menu</strong>
+      <button class="icon-btn" data-menu-close aria-label="Close menu">✕</button>
+    </div>
+    <div class="md-body">
+      {% if endpoint.startswith('admin.') %}
+        <small class="md-section">Admin</small>
+        <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if endpoint == 'admin.dashboard' else '' }}">📊 Dashboard</a>
+        <a href="{{ url_for('admin.products') }}"  class="{{ 'active' if endpoint and 'product' in endpoint else '' }}">🛍️ Products</a>
+        <a href="{{ url_for('admin.product_new') }}">＋ Add product</a>
+        <a href="{{ url_for('admin.orders') }}"    class="{{ 'active' if endpoint and 'order' in endpoint else '' }}">📦 Orders</a>
+        <a href="{{ url_for('admin.customers') }}">💌 Customers</a>
+        <a href="{{ url_for('admin.users') }}">👥 Users</a>
+        <a href="{{ url_for('admin.messages') }}">💬 Messages</a>
+        <a href="{{ url_for('admin.reports') }}">📈 Reports</a>
+        <a href="{{ url_for('admin.settings') }}">⚙️ Settings</a>
+      {% elif endpoint.startswith('account.') or endpoint.startswith('orders.') %}
+        <small class="md-section">My account</small>
+        <a href="{{ url_for('account.index') }}">🌷 Overview</a>
+        <a href="{{ url_for('account.profile') }}">👤 Profile</a>
+        <a href="{{ url_for('account.orders') }}">📦 My orders</a>
+        <a href="{{ url_for('account.wishlist') }}">💖 Wishlist</a>
+        <a href="{{ url_for('chat.room') }}">💬 Chat</a>
+        <a href="{{ url_for('cart.view') }}">🛍️ Cart</a>
+        <a href="{{ url_for('account.settings') }}">⚙️ Settings</a>
+        <a href="{{ url_for('main.home') }}">← Back to shop</a>
+      {% else %}
+        <small class="md-section">Shop</small>
+        <a href="{{ url_for('main.home') }}"      class="{{ 'active' if endpoint == 'main.home' else '' }}">🏡 Home</a>
+        <a href="{{ url_for('products.shop') }}"  class="{{ 'active' if endpoint.startswith('products.') else '' }}">🛍️ Shop</a>
+        <a href="{{ url_for('main.about') }}"     class="{{ 'active' if endpoint == 'main.about' else '' }}">🌸 About</a>
+        <a href="{{ url_for('main.contact') }}">💌 Contact</a>
+        {% if user and user.role == 'admin' %}
+          <a href="{{ url_for('admin.dashboard') }}">📊 Admin dashboard</a>
+        {% elif user %}
+          <a href="{{ url_for('account.index') }}">🌷 My account</a>
+          <a href="{{ url_for('orders.my_orders') }}">📦 My orders</a>
+          <a href="{{ url_for('chat.room') }}">💬 Chat</a>
+        {% endif %}
+        <a href="{{ url_for('cart.view') }}">🧺 Cart</a>
+        <small class="md-section">Help</small>
+        <a href="{{ url_for('main.shipping') }}">📦 Shipping</a>
+        <a href="{{ url_for('main.custom_orders') }}">🎀 Custom orders</a>
+        <a href="{{ url_for('main.faq') }}">❓ FAQ</a>
+        <a href="{{ url_for('main.privacy') }}">🔒 Privacy</a>
+      {% endif %}
+      <div class="md-divider"></div>
+      {% if user %}
+        <a href="{{ url_for('auth.logout') }}" class="md-cta-ghost">Sign out</a>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}"    class="md-cta-ghost">Sign in</a>
+        <a href="{{ url_for('auth.register') }}" class="md-cta">Create account</a>
       {% endif %}
     </div>
   </div>
+  <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop" hidden></div>
 </header>

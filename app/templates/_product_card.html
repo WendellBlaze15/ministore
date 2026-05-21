@@ -1,7 +1,9 @@
 {% macro product_card(p) -%}
-<article class="product-card" data-reveal>
+{% set out_of_stock = (p.stock is defined) and (p.stock is not none) and (p.stock|int <= 0) %}
+<article class="product-card {{ 'is-oos' if out_of_stock else '' }}" data-reveal>
   <a href="{{ url_for('products.detail', slug=p.slug) }}" class="product-thumb">
-    {% if p.is_featured %}<span class="badge">✨ Featured</span>{% endif %}
+    {% if p.is_featured and not out_of_stock %}<span class="badge">✨ Featured</span>{% endif %}
+    {% if out_of_stock %}<span class="badge badge-oos">Out of stock</span>{% endif %}
     <img src="{{ p.cover_image or 'https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?auto=format&fit=crop&w=600&q=70' }}" alt="{{ p.name }}" loading="lazy" />
   </a>
   <div class="product-body">
@@ -11,15 +13,20 @@
     </a>
     <div class="product-row">
       <span class="product-price">₱{{ "%.2f"|format(p.price|float) }}</span>
-      <button class="product-cta" title="Add to cart"
-        data-add-to-cart
-        data-id="{{ p.id }}"
-        data-name="{{ p.name }}"
-        data-slug="{{ p.slug }}"
-        data-price="{{ p.price }}"
-        data-image="{{ p.cover_image or '' }}">
-        +
-      </button>
+      {% if out_of_stock %}
+        <button class="product-cta product-cta--disabled" title="Out of stock" disabled aria-disabled="true">✕</button>
+      {% else %}
+        <button class="product-cta" title="Add to cart"
+          data-add-to-cart
+          data-id="{{ p.id }}"
+          data-name="{{ p.name }}"
+          data-slug="{{ p.slug }}"
+          data-price="{{ p.price }}"
+          data-image="{{ p.cover_image or '' }}"
+          data-stock="{{ p.stock if p.stock is not none else '' }}">
+          +
+        </button>
+      {% endif %}
     </div>
   </div>
 </article>

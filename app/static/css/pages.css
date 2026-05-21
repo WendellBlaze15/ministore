@@ -223,6 +223,12 @@
 /* ---------- Admin ---------- */
 .admin-shell { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - var(--header-h)); }
 @media (max-width: 980px) { .admin-shell { grid-template-columns: 1fr; } }
+/* On phones, hide the sidebar entirely. The burger drawer in _navbar
+   already mirrors every admin link, so we don't lose any navigation. */
+@media (max-width: 720px) {
+  .admin-side { display: none; }
+  .admin-main { padding: 22px 16px; }
+}
 .admin-side {
   background: linear-gradient(180deg, var(--pink-100), transparent);
   border-right: 1px solid var(--border);
@@ -265,9 +271,19 @@
 .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .panel-head h3 { margin: 0; font-family: var(--font-display); }
 
+/* Wrap any table so it scrolls horizontally on small screens
+   without breaking the page layout. */
+.panel .table,
+.users-table,
 .table {
   width: 100%; border-collapse: separate; border-spacing: 0;
   font-size: .92rem;
+}
+@media (max-width: 720px) {
+  .panel { overflow-x: auto; }
+  .panel .table,
+  .users-table,
+  .table { min-width: 640px; }
 }
 .table th, .table td { padding: 12px 14px; text-align: left; }
 .table thead th {
@@ -311,6 +327,10 @@
   align-items: start;
 }
 @media (max-width: 880px) { .acct-shell { grid-template-columns: 1fr; } }
+/* On phones, hide the customer sidebar — burger drawer mirrors links */
+@media (max-width: 720px) {
+  .acct-side { display: none; }
+}
 
 .acct-side {
   background: linear-gradient(180deg, var(--pink-100), var(--surface));
@@ -351,6 +371,7 @@
   display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr);
 }
 @media (max-width: 880px) { .acct-stats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .acct-stats { grid-template-columns: 1fr; } }
 .acct-card {
   padding: 18px;
   border-radius: var(--radius-lg);
@@ -376,6 +397,11 @@
   border-bottom: 1px solid var(--border);
   font-size: .92rem; color: var(--ink-700);
   transition: background .12s ease;
+}
+@media (max-width: 720px) {
+  /* Table becomes horizontally scrollable on phones — preserves alignment. */
+  .acct-table { overflow-x: auto; }
+  .acct-tr { min-width: 560px; }
 }
 .acct-tr:last-child { border-bottom: 0; }
 .acct-tr:hover { background: var(--surface-2); }
@@ -977,6 +1003,18 @@
 .star-picker label:hover ~ label,
 .star-picker input:checked ~ label { color: #f59e0b; }
 .star-picker input:focus-visible + label { transform: scale(1.15); }
+
+/* Out-of-stock banner on product detail page */
+.oos-banner {
+  margin: 16px 0;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff1f5 0%, #fff6f7 100%);
+  border: 1px solid #f4c2d2;
+  box-shadow: inset 0 0 0 1px rgba(196, 54, 109, .06);
+}
+.oos-banner b { color: #b73670; display: block; font-size: 1.05rem; margin-bottom: 4px; }
+.oos-banner p { margin: 0 0 12px; color: var(--ink-700, #4a3540); }
 
 /* ============================================================
    Order counters + order cards (buyer)

@@ -92,8 +92,11 @@ def place_order():
             return jsonify({"ok": False, "error": "One of the items is no longer available."}), 400
         if qty < 1:
             qty = 1
-        if prod.get("stock") is not None and qty > prod["stock"]:
-            return jsonify({"ok": False, "error": f"Only {prod['stock']} left for {prod['name']}."}), 400
+        stock = prod.get("stock")
+        if stock is not None and stock <= 0:
+            return jsonify({"ok": False, "error": f"\"{prod['name']}\" is out of stock."}), 400
+        if stock is not None and qty > stock:
+            return jsonify({"ok": False, "error": f"Only {stock} left for {prod['name']}."}), 400
         unit = float(prod["price"])
         subtotal += unit * qty
         clean_items.append(

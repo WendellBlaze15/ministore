@@ -120,7 +120,7 @@
         const data = await r.json();
         if (!data.ok) throw new Error(data.error || 'Could not reorder.');
         try {
-          const KEY = 'pl_cart_v1';
+          const KEY = 'pl-cart';
           const cur = JSON.parse(localStorage.getItem(KEY) || '[]');
           data.items.forEach(it => {
             const existing = cur.find(c => c.product_id === it.product_id);

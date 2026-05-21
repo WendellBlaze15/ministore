@@ -30,16 +30,29 @@
       {% endif %}
     </div>
 
+    {% set out_of_stock = product.stock is not none and (product.stock|int <= 0) %}
     <div class="pdp-info">
       <span class="tag">{{ product.category|capitalize }}</span>
       <h1>{{ product.name }}</h1>
       <div class="pdp-price">₱{{ "%.2f"|format(product.price|float) }}</div>
       <div class="pdp-meta">
-        <span>📦 {{ product.stock }} in stock</span>
+        {% if out_of_stock %}
+          <span class="badge badge-oos">Out of stock</span>
+        {% else %}
+          <span>📦 {{ product.stock }} in stock</span>
+        {% endif %}
         {% if product.customizable %}<span>🎨 Custom requests welcome</span>{% endif %}
         <span>🚚 Free shipping on ₱1,500+</span>
       </div>
       <p>{{ product.description or "A tiny handmade treasure from our studio." }}</p>
+
+      {% if out_of_stock %}
+      <div class="oos-banner">
+        <b>This piece is sold out 🌷</b>
+        <p>It's currently out of stock. Message us in chat — we can make a fresh batch just for you.</p>
+        <a class="btn btn-secondary" href="{{ url_for('chat.room') }}">💌 Message the studio</a>
+      </div>
+      {% else %}
 
       {% if product.customizable %}
       <div class="field">
@@ -55,9 +68,13 @@
           <span id="qtyVal">1</span>
           <button id="qtyPlus">+</button>
         </div>
-        <button class="btn btn-primary" id="pdpAdd">Add to basket 🛍️</button>
+        <button class="btn btn-primary" id="pdpAdd"
+                data-stock="{{ product.stock if product.stock is not none else '' }}">
+          Add to basket 🛍️
+        </button>
         <button class="btn btn-secondary" id="pdpBuy">Buy now</button>
       </div>
+      {% endif %}
 
       <div class="divider"></div>
       <details>
@@ -83,21 +100,54 @@
 {% block scripts %}
 <script type="module">
   import { cart } from "{{ url_for('static', filename='js/cart.js') }}";
-  const qtyVal = document.getElementById('qtyVal');
-  document.getElementById('qtyMinus').onclick = () => qtyVal.textContent = Math.max(1, parseInt(qtyVal.textContent) - 1);
-  document.getElementById('qtyPlus').onclick  = () => qtyVal.textContent = parseInt(qtyVal.textContent) + 1;
-  const note = document.getElementById('customNote');
-  function addToCart() {
-    const qty = parseInt(qtyVal.textContent) || 1;
-    cart.add({
-      id: "{{ product.id }}",
-      name: "{{ product.name|e }}",
-      slug: "{{ product.slug }}",
-      price: {{ product.price|float }},
-      cover_image: "{{ (images[0].url if images else product.cover_image)|e }}",
-    }, qty, note ? note.value : '');
+
+  const STOCK = {{ (product.stock|int) if product.stock is not none else 'null' }};
+  const IS_OOS = STOCK !== null && STOCK <= 0;
+
+  const qtyVal  = document.getElementById('qtyVal');
+  const minus   = document.getElementById('qtyMinus');
+  const plus    = document.getElementById('qtyPlus');
+  const addBtn  = document.getElementById('pdpAdd');
+  const buyBtn  = document.getElementById('pdpBuy');
+  const note    = document.getElementById('customNote');
+
+  // If out of stock, the action panel isn't rendered; bail early.
+  if (IS_OOS || !addBtn) {
+    // Nothing to wire — the template shows the "sold out" banner instead.
+  } else {
+    minus.onclick = () => qtyVal.textContent = Math.max(1, parseInt(qtyVal.textContent) - 1);
+    plus.onclick  = () => {
+      const cur = parseInt(qtyVal.textContent) || 1;
+      if (STOCK !== null && cur >= STOCK) {
+        window.toast && window.toast(`Only ${STOCK} left in stock.`, { type: 'error' });
+        return;
+      }
+      qtyVal.textContent = cur + 1;
+    };
+
+    function addToCart() {
+      // Guest check — redirect to register if not signed in
+      const me = (window.__PL__ && window.__PL__.CURRENT_USER) || null;
+      if (!me) {
+        window.toast && window.toast('Please create an account to add items. ✨', { type: 'info' });
+        const next = encodeURIComponent(window.location.pathname);
+        setTimeout(() => window.location.href = '/auth/register?next=' + next, 700);
+        return false;
+      }
+      const qty = parseInt(qtyVal.textContent) || 1;
+      return cart.add({
+        id: "{{ product.id }}",
+        name: "{{ product.name|e }}",
+        slug: "{{ product.slug }}",
+        price: {{ product.price|float }},
+        cover_image: "{{ (images[0].url if images else product.cover_image)|e }}",
+        stock: STOCK,
+      }, qty, note ? note.value : '');
+    }
+    addBtn.onclick = addToCart;
+    buyBtn.onclick = () => {
+      if (addToCart()) window.location.href = "{{ url_for('cart.view') }}";
+    };
   }
-  document.getElementById('pdpAdd').onclick = addToCart;
-  document.getElementById('pdpBuy').onclick = () => { addToCart(); window.location.href = "{{ url_for('cart.view') }}"; };
 </script>
 {% endblock %}

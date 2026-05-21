@@ -52,7 +52,7 @@
     window.__PL__ = {
       SUPABASE_URL: "{{ SUPABASE_URL | e }}",
       SUPABASE_ANON_KEY: "{{ SUPABASE_ANON_KEY | e }}",
-      CURRENT_USER: {{ (session.get('user') or {}) | tojson }},
+      CURRENT_USER: {{ session.get('user') | tojson }},
     };
   </script>
   <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>

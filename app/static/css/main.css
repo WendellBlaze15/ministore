@@ -94,6 +94,7 @@ p  { margin: 0 0 1em; color: var(--ink-700); }
 
 /* Layout helpers */
 .container { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+@media (max-width: 560px) { .container { padding: 0 16px; } }
 .section   { padding: clamp(48px, 8vw, 96px) 0; }
 .grid      { display: grid; gap: 24px; }
 .row-between { display:flex; align-items:center; justify-content:space-between; gap: 16px; flex-wrap: wrap; }
@@ -231,15 +232,102 @@ html[data-theme='dark'] .navbar { background: rgba(29, 20, 26, .8); }
 
 @media (max-width: 880px) {
   .menu-toggle { display: inline-flex; }
-  .nav-links {
-    position: absolute; top: var(--header-h); left: 0; right: 0;
-    flex-direction: column; align-items: stretch; gap: 0;
-    padding: 8px; margin: 0;
-    background: var(--surface); border-bottom: 1px solid var(--border);
-    transform: translateY(-150%); transition: transform .25s ease;
-  }
-  .nav-links.open { transform: translateY(0); }
-  .nav-links a { padding: 14px 16px; border-radius: 12px; }
+  .nav-links { display: none; }
+}
+
+/* =====================================================================
+   Mobile drawer (burger menu) — works on every page
+===================================================================== */
+.mobile-drawer {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(86vw, 360px);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -16px 0 48px -16px rgba(236, 79, 138, .35);
+  transform: translateX(100%);
+  transition: transform .26s ease;
+  z-index: 1100;
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+}
+.mobile-drawer.open { transform: translateX(0); }
+.mobile-drawer .md-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.mobile-drawer .md-header strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--pink-700);
+}
+.mobile-drawer .md-body {
+  display: flex; flex-direction: column;
+  gap: 4px; padding: 14px;
+}
+.mobile-drawer .md-section {
+  display: block;
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: var(--ink-500);
+  margin: 14px 8px 6px;
+}
+.mobile-drawer .md-body > a {
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: .96rem;
+  font-weight: 500;
+  color: var(--ink-700);
+  transition: background .15s ease, color .15s ease;
+}
+.mobile-drawer .md-body > a:hover { background: var(--pink-100); color: var(--pink-700); }
+.mobile-drawer .md-body > a.active {
+  background: linear-gradient(135deg, var(--pink-200), var(--pink-100));
+  color: var(--pink-700);
+  font-weight: 600;
+}
+.mobile-drawer .md-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0;
+}
+.mobile-drawer .md-cta,
+.mobile-drawer .md-cta-ghost {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.mobile-drawer .md-cta {
+  background: linear-gradient(135deg, var(--pink-500), var(--pink-700));
+  color: white;
+  box-shadow: 0 6px 18px rgba(236, 79, 138, .35);
+}
+.mobile-drawer .md-cta-ghost {
+  background: var(--surface-2);
+  color: var(--pink-700);
+  border: 1px solid var(--border);
+}
+
+.mobile-drawer-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(35, 17, 28, .45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity .26s ease;
+  z-index: 1090;
+}
+.mobile-drawer-backdrop.open { opacity: 1; }
+
+/* Hide drawer on desktop entirely so it never blocks clicks */
+@media (min-width: 881px) {
+  .mobile-drawer,
+  .mobile-drawer-backdrop { display: none !important; }
 }
 
 /* =====================================================================
@@ -363,6 +451,12 @@ html[data-theme='dark'] .navbar { background: rgba(29, 20, 26, .8); }
   display: grid; gap: 24px;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
 }
+@media (max-width: 480px) {
+  .products { gap: 14px; grid-template-columns: repeat(2, 1fr); }
+  .product-body { padding: 12px 12px 14px; }
+  .product-name { font-size: .95rem; }
+  .product-cta { width: 32px; height: 32px; }
+}
 .product-card {
   position: relative;
   background: var(--surface);
@@ -394,12 +488,31 @@ html[data-theme='dark'] .navbar { background: rgba(29, 20, 26, .8); }
   border: none;
 }
 .product-cta:hover { background: var(--pink-600); transform: scale(1.05); }
+.product-cta--disabled,
+.product-cta:disabled {
+  background: #e5dde2;
+  color: #fff;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+}
+.product-card.is-oos .product-thumb img {
+  filter: grayscale(.6) brightness(.95);
+  opacity: .8;
+}
+.product-card.is-oos { opacity: .92; }
 .badge {
   position: absolute; top: 12px; left: 12px;
   background: white; color: var(--pink-700);
   border: 1px solid var(--border);
   padding: 4px 10px; border-radius: 999px;
   font-size: .72rem; font-weight: 600;
+}
+.badge-oos {
+  background: #fff;
+  color: #b73670;
+  border-color: #f4c2d2;
+  box-shadow: 0 4px 10px -4px rgba(196, 54, 109, .35);
 }
 .wish-btn {
   position: absolute; top: 10px; right: 10px;
