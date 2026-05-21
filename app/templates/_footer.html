@@ -22,16 +22,29 @@
         <h5>Help</h5>
         <a href="{{ url_for('main.about') }}">About us</a>
         <a href="{{ url_for('main.contact') }}">Contact us</a>
+        <a href="{{ url_for('main.shipping') }}">Shipping & delivery</a>
+        <a href="{{ url_for('main.custom_orders') }}">Custom orders</a>
+        <a href="{{ url_for('main.faq') }}">FAQ</a>
+        <a href="{{ url_for('main.privacy') }}">Privacy</a>
         <a href="{{ url_for('chat.room') }}">Chat with us</a>
       </div>
       <div>
         <h5>Account</h5>
         {% if session.get('user') %}
-          <a href="{{ url_for('orders.my_orders') }}">My orders</a>
+          {% if session.get('user').role == 'admin' %}
+            <a href="{{ url_for('admin.dashboard') }}">Admin dashboard</a>
+            <a href="{{ url_for('admin.orders') }}">Orders</a>
+            <a href="{{ url_for('admin.products') }}">Products</a>
+          {% else %}
+            <a href="{{ url_for('account.index') }}">My account</a>
+            <a href="{{ url_for('orders.my_orders') }}">My orders</a>
+            <a href="{{ url_for('account.wishlist') }}">Wishlist</a>
+          {% endif %}
           <a href="{{ url_for('auth.logout') }}">Sign out</a>
         {% else %}
           <a href="{{ url_for('auth.login') }}">Sign in</a>
           <a href="{{ url_for('auth.register') }}">Create account</a>
+          <a href="{{ url_for('auth.forgot') }}">Forgot password</a>
         {% endif %}
       </div>
     </div>

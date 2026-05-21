@@ -8,17 +8,28 @@
   <meta name="description" content="{{ APP_TAGLINE }}. Handmade bookmarks, keychains, polaroid prints & crafts from Papier Lab." />
   <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}" type="image/png" />
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logo.png') }}" />
-  <script>
-    // Mark <html> as JS-enabled BEFORE CSS runs so the reveal animation
-    // only ever hides content when we know JS will un-hide it.
-    document.documentElement.classList.add('js');
-  </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}" />
   <style>
-    /* Reveal animation is opt-in only when JS is alive. */
-    html.js [data-reveal] { opacity: 0; transform: translateY(14px); transition: opacity .55s ease, transform .55s ease; }
-    html.js [data-reveal].in { opacity: 1; transform: translateY(0); }
+    /* Pure CSS reveal animation. Always plays on page load so content is
+       guaranteed visible even when JS modules fail to load (e.g. broken
+       static-asset MIME, slow CDN, ad-blocker, content-security policy).
+       The animation finishes within ~600ms and uses `both` so the final
+       state stays applied. */
+    [data-reveal] {
+      animation: pl-reveal .6s ease-out both;
+    }
+    [data-reveal]:nth-of-type(2) { animation-delay: .08s; }
+    [data-reveal]:nth-of-type(3) { animation-delay: .16s; }
+    [data-reveal]:nth-of-type(4) { animation-delay: .24s; }
+    [data-reveal]:nth-of-type(n+5) { animation-delay: .32s; }
+    @keyframes pl-reveal {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      [data-reveal] { animation: none; }
+    }
   </style>
   {% block head %}{% endblock %}
 </head>

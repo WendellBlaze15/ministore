@@ -21,9 +21,36 @@
       {% endif %}
     </nav>
     {% else %}
-    <span class="nav-area-label muted">
-      {% if endpoint.startswith('admin.') %}Admin · Papier Lab{% else %}My account{% endif %}
-    </span>
+    {% set crumbs = {
+      'admin.dashboard': ('Dashboard', '📊'),
+      'admin.products': ('Products', '🎀'),
+      'admin.add_product': ('Add product', '🎀'),
+      'admin.edit_product': ('Edit product', '🎀'),
+      'admin.orders': ('Orders', '🎁'),
+      'admin.order_detail': ('Order details', '🎁'),
+      'admin.customers': ('Customers', '💗'),
+      'admin.users': ('Users', '👥'),
+      'admin.messages': ('Messages', '💬'),
+      'admin.reports': ('Reports', '📈'),
+      'admin.settings': ('Settings', '⚙️'),
+      'account.index': ('Overview', '🌸'),
+      'account.profile': ('Profile', '🌷'),
+      'account.addresses': ('Addresses', '🏠'),
+      'account.wishlist': ('Wishlist', '💝'),
+      'account.settings': ('Settings', '⚙️'),
+      'account.tracking': ('Tracking', '📦'),
+      'orders.my_orders': ('My orders', '🎁'),
+      'orders.track': ('Order tracking', '📦'),
+      'chat.room': ('Chat', '💬'),
+    } %}
+    {% set crumb = crumbs.get(endpoint) %}
+    <nav class="nav-crumbs" aria-label="Breadcrumb">
+      <span class="nav-crumb-root">{% if endpoint.startswith('admin.') %}Admin{% else %}My account{% endif %}</span>
+      {% if crumb %}
+        <span class="nav-crumb-sep" aria-hidden="true">›</span>
+        <span class="nav-crumb-leaf">{{ crumb[1] }} {{ crumb[0] }}</span>
+      {% endif %}
+    </nav>
     {% endif %}
 
     <div class="nav-tail">

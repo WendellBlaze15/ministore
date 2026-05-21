@@ -1,0 +1,40 @@
+{% extends "help/_help_layout.html" %}
+{% block title %}FAQ — Papier Lab{% endblock %}
+{% set help_tag = 'questions' %}
+{% set help_title = 'Frequently asked questions ❓' %}
+{% set help_blurb = 'A few of the things our cuties ask before placing their order.' %}
+
+{% block help_body %}
+<details open class="faq-item">
+  <summary>How long until my order ships?</summary>
+  <p>Every piece is handmade so please allow 2–4 working days of crafting before dispatch. Custom orders take 3–7 working days.</p>
+</details>
+<details class="faq-item">
+  <summary>Do you ship outside the Philippines?</summary>
+  <p>Not yet, sorry! We're a tiny home studio and we want to make sure every parcel arrives in perfect condition. International shipping is coming soon.</p>
+</details>
+<details class="faq-item">
+  <summary>How do I pay?</summary>
+  <p>You can pay through GCash or Cash on Delivery (COD). Both are available at checkout.</p>
+</details>
+<details class="faq-item">
+  <summary>Can I cancel or change my order?</summary>
+  <p>You can change your order while it's still in <em>Pending</em> status. Once we've started crafting, changes may not be possible. Reach out in <a href="{{ url_for('chat.room') }}">chat</a> as early as you can.</p>
+</details>
+<details class="faq-item">
+  <summary>Do you take rush orders?</summary>
+  <p>Sometimes! Message us first and we'll check our schedule. A small rush fee may apply.</p>
+</details>
+<details class="faq-item">
+  <summary>Are your bookmarks laminated?</summary>
+  <p>Yes — all bookmarks are sealed in glossy or matte film for extra durability. Polaroid prints use matte film.</p>
+</details>
+<details class="faq-item">
+  <summary>Can I return an item?</summary>
+  <p>Because most of our pieces are personalised, we don't accept returns. But if your parcel arrives damaged, please send us a photo within 3 days and we'll remake it for free.</p>
+</details>
+<details class="faq-item">
+  <summary>How do I track my order?</summary>
+  <p>Sign in and visit your <a href="{{ url_for('orders.my_orders') }}">orders page</a> — every order gets its own tracking timeline.</p>
+</details>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero" style="padding-bottom: 8px;">
+  <div class="container">
+    <span class="tag" data-reveal>{{ help_tag or 'help' }}</span>
+    <h1 style="margin-top: 10px; max-width: 720px;" data-reveal>{{ help_title }}</h1>
+    {% if help_blurb %}<p class="muted" style="max-width: 600px;" data-reveal>{{ help_blurb }}</p>{% endif %}
+  </div>
+</section>
+
+<section class="section" style="padding-top: 12px;">
+  <div class="container help-grid">
+    <aside class="help-side" data-reveal>
+      <h5 style="margin: 0 0 10px;">Helpful pages</h5>
+      <a href="{{ url_for('main.shipping') }}" class="{{ 'active' if request.endpoint == 'main.shipping' else '' }}">📦 Shipping & delivery</a>
+      <a href="{{ url_for('main.custom_orders') }}" class="{{ 'active' if request.endpoint == 'main.custom_orders' else '' }}">🎀 Custom orders</a>
+      <a href="{{ url_for('main.faq') }}" class="{{ 'active' if request.endpoint == 'main.faq' else '' }}">❓ FAQ</a>
+      <a href="{{ url_for('main.privacy') }}" class="{{ 'active' if request.endpoint == 'main.privacy' else '' }}">🔒 Privacy</a>
+      <a href="{{ url_for('main.contact') }}">💌 Contact us</a>
+      <a href="{{ url_for('chat.room') }}">💬 Chat with us</a>
+    </aside>
+    <div class="help-content card" data-reveal>
+      {% block help_body %}{% endblock %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "help/_help_layout.html" %}
+{% block title %}Privacy — Papier Lab{% endblock %}
+{% set help_tag = 'privacy' %}
+{% set help_title = 'Privacy & your data 🔒' %}
+{% set help_blurb = 'A short, plain-language summary of what we collect and how we keep it safe.' %}
+
+{% block help_body %}
+<h3>What we collect</h3>
+<p>When you place an order or sign up, we collect your name, email, phone number and delivery address. We also store your account password as a one-way hash — we never see the plain text.</p>
+
+<h3 style="margin-top: 20px;">Why we collect it</h3>
+<ul class="bullet">
+  <li>To process and ship your handmade orders.</li>
+  <li>To chat with you about your order or custom request.</li>
+  <li>To send a delivery update if something changes.</li>
+</ul>
+
+<h3 style="margin-top: 20px;">Who we share it with</h3>
+<p>Only the couriers (J&amp;T, LBC, Flash Express, etc.) so they can deliver your parcel. We never sell your data and we never share it with marketers.</p>
+
+<h3 style="margin-top: 20px;">Cookies & sessions</h3>
+<p>We use a single session cookie to keep you signed in. It's marked <code>HttpOnly</code> and <code>SameSite=Lax</code>, so it's protected from common attacks.</p>
+
+<h3 style="margin-top: 20px;">Delete your data</h3>
+<p>You can delete your whole account anytime from <a href="{{ url_for('account.settings') if session.get('user') else 'auth.login' }}">your settings page</a>. We'll wipe your profile, addresses, cart and chats.</p>
+
+<h3 style="margin-top: 20px;">Questions?</h3>
+<p>Just message us in <a href="{{ url_for('chat.room') }}">chat</a> or email <a href="mailto:papierlab8@gmail.com">papierlab8@gmail.com</a>.</p>
+{% endblock %}

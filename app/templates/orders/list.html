@@ -8,20 +8,62 @@
   <p class="muted">All the goodies you've ordered from Papier Lab.</p>
 </header>
 
+{# ---------- Order counters by status ---------- #}
+{% set counts = {'pending': 0, 'preparing': 0, 'shipped': 0, 'delivered': 0, 'cancelled': 0} %}
+{% for o in orders %}{% if o.status in counts %}{% set _ = counts.update({o.status: counts[o.status] + 1}) %}{% endif %}{% endfor %}
+
+<section class="acct-section order-counters" data-reveal>
+  <div class="oc-card"><span class="oc-emoji">🧾</span><b>{{ counts.pending }}</b><small>Pending</small></div>
+  <div class="oc-card"><span class="oc-emoji">✂️</span><b>{{ counts.preparing }}</b><small>Preparing</small></div>
+  <div class="oc-card"><span class="oc-emoji">🚚</span><b>{{ counts.shipped }}</b><small>Shipped</small></div>
+  <div class="oc-card"><span class="oc-emoji">💌</span><b>{{ counts.delivered }}</b><small>Delivered</small></div>
+</section>
+
 <section class="acct-section" data-reveal>
   {% if orders %}
-  <div class="acct-table">
-    <div class="acct-tr head">
-      <span>Order</span><span>Date</span><span>Payment</span><span>Status</span><span>Total</span>
-    </div>
+  <div class="orders-tabs">
+    <button class="ot-btn active" data-status="all">All ({{ orders|length }})</button>
+    <button class="ot-btn" data-status="pending">Pending ({{ counts.pending }})</button>
+    <button class="ot-btn" data-status="preparing">Preparing ({{ counts.preparing }})</button>
+    <button class="ot-btn" data-status="shipped">Shipped ({{ counts.shipped }})</button>
+    <button class="ot-btn" data-status="delivered">Delivered ({{ counts.delivered }})</button>
+    {% if counts.cancelled %}<button class="ot-btn" data-status="cancelled">Cancelled ({{ counts.cancelled }})</button>{% endif %}
+  </div>
+
+  <div class="orders-list">
     {% for o in orders %}
-    <a href="{{ url_for('orders.track', order_id=o.id) }}" class="acct-tr">
-      <span>#{{ o.id[:8] }}</span>
-      <span>{{ o.created_at[:10] }}</span>
-      <span>{{ (o.payment_method or '')|upper }}</span>
-      <span><span class="pill pill-{{ o.status }}">{{ o.status }}</span></span>
-      <span><b>₱{{ '%.2f' | format(o.total|float) }}</b></span>
-    </a>
+    <article class="order-card" data-status="{{ o.status }}">
+      <header>
+        <div>
+          <b>#{{ o.id[:8] }}</b>
+          <span class="pill pill-{{ o.status }}">{{ o.status }}</span>
+        </div>
+        <small class="muted">Placed {{ o.created_at[:10] }}</small>
+      </header>
+      <div class="order-card-body">
+        <div>
+          <small class="muted">Payment</small>
+          <div><b>{{ (o.payment_method or 'cod').upper() }}</b></div>
+        </div>
+        <div>
+          <small class="muted">Total</small>
+          <div><b>₱{{ '%.2f' | format(o.total|float) }}</b></div>
+        </div>
+      </div>
+      <footer class="order-card-actions">
+        <a class="btn btn-primary btn-sm" href="{{ url_for('orders.track', order_id=o.id) }}">Track →</a>
+        {% if o.status == 'pending' %}
+          <form method="POST" action="{{ url_for('orders.cancel', order_id=o.id) }}" onsubmit="return confirm('Cancel order #{{ o.id[:8] }}?');" style="margin:0;">
+            <button class="btn btn-secondary btn-sm">Cancel</button>
+          </form>
+        {% endif %}
+        {% if o.status in ('delivered','shipped','cancelled') %}
+          <form method="POST" action="{{ url_for('orders.reorder', order_id=o.id) }}" data-reorder-form style="margin:0;">
+            <button class="btn btn-secondary btn-sm">🔁 Reorder</button>
+          </form>
+        {% endif %}
+      </footer>
+    </article>
     {% endfor %}
   </div>
   {% else %}
@@ -32,4 +74,44 @@
   </div>
   {% endif %}
 </section>
+
+<script>
+  document.querySelectorAll('.ot-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ot-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const want = btn.dataset.status;
+      document.querySelectorAll('.order-card').forEach(card => {
+        card.style.display = (want === 'all' || card.dataset.status === want) ? '' : 'none';
+      });
+    });
+  });
+  document.querySelectorAll('form[data-reorder-form]').forEach(f => {
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = f.querySelector('button');
+      const old = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Adding…';
+      try {
+        const r = await fetch(f.action, { method: 'POST', headers: { 'Accept': 'application/json' }});
+        const data = await r.json();
+        if (!data.ok) throw new Error(data.error || 'Could not reorder.');
+        try {
+          const KEY = 'pl_cart_v1';
+          const cur = JSON.parse(localStorage.getItem(KEY) || '[]');
+          data.items.forEach(it => {
+            const existing = cur.find(c => c.product_id === it.product_id);
+            if (existing) existing.quantity = (existing.quantity || 1) + it.quantity;
+            else cur.push(it);
+          });
+          localStorage.setItem(KEY, JSON.stringify(cur));
+        } catch(_) {}
+        window.location.href = '{{ url_for("cart.view") }}';
+      } catch (err) {
+        btn.disabled = false; btn.textContent = old;
+        alert(err.message);
+      }
+    });
+  });
+</script>
 {% endblock %}

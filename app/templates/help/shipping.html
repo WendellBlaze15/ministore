@@ -1,0 +1,28 @@
+{% extends "help/_help_layout.html" %}
+{% block title %}Shipping & delivery — Papier Lab{% endblock %}
+{% set help_tag = 'shipping' %}
+{% set help_title = 'Shipping & delivery 📦' %}
+{% set help_blurb = 'Everything you need to know about how your handmade goodies travel to you.' %}
+
+{% block help_body %}
+<h3>Where we ship</h3>
+<p>We currently ship nationwide within the Philippines through trusted couriers like J&amp;T, LBC and Flash Express. Metro Manila and Cebu deliveries usually arrive in 2–4 working days, while provincial areas take 4–7 working days.</p>
+
+<h3 style="margin-top: 24px;">Lead time</h3>
+<p>Because everything is made-to-order, please allow <strong>2–4 working days</strong> of crafting time before your order is dispatched. Rush orders are sometimes available — message us in <a href="{{ url_for('chat.room') }}">chat</a> first.</p>
+
+<h3 style="margin-top: 24px;">Shipping fees</h3>
+<ul class="bullet">
+  <li>Metro Manila: ₱75–₱120</li>
+  <li>Luzon (outside MM): ₱150–₱200</li>
+  <li>Visayas: ₱180–₱220</li>
+  <li>Mindanao: ₱200–₱260</li>
+</ul>
+<p class="muted">Exact fees are computed at checkout. We always pack your goodies in a cute kraft box with a bow and a thank-you note. 🌸</p>
+
+<h3 style="margin-top: 24px;">Tracking your order</h3>
+<p>Once your parcel ships, you'll see the courier and tracking number on your <a href="{{ url_for('orders.my_orders') }}">orders page</a>. You can also chat the admin anytime to follow up — we love updates!</p>
+
+<h3 style="margin-top: 24px;">Lost or damaged parcels</h3>
+<p>If your parcel arrives damaged or never arrives, please message us within <strong>3 days</strong> of the expected delivery date and we'll work with the courier or remake your order at no charge.</p>
+{% endblock %}

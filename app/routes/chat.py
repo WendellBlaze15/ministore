@@ -37,7 +37,33 @@ def _ensure_chat_for_user(user_id: str) -> str | None:
 def room():
     user = current_user()
     chat_id = _ensure_chat_for_user(user["id"])
-    return render_template("chat/room.html", chat_id=chat_id, partner_name="Papier Lab Admin")
+
+    # Optional ?order=<id> — prefill a friendly opener referencing the order
+    prefill = ""
+    raw_order = (request.args.get("order") or "").strip()
+    if raw_order and _UUID_RE.match(raw_order):
+        svc = get_service_client()
+        if svc:
+            try:
+                row = (
+                    svc.table("orders")
+                    .select("id, status")
+                    .eq("id", raw_order)
+                    .eq("user_id", user["id"])
+                    .limit(1)
+                    .execute()
+                ).data or []
+                if row:
+                    prefill = f"Hi! 🌸 Quick question about my order #{raw_order[:8]} (status: {row[0]['status']})."
+            except Exception:
+                pass
+
+    return render_template(
+        "chat/room.html",
+        chat_id=chat_id,
+        partner_name="Papier Lab Admin",
+        prefill=prefill,
+    )
 
 
 @bp.route("/admin/<chat_id>")

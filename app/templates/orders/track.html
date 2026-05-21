@@ -47,6 +47,47 @@
         <span>₱{{ '%.2f' | format(it.unit_price|float * it.quantity) }}</span>
       </div>
     {% endfor %}
+
+    {# ---------- Interactive customer actions ---------- #}
+    <div class="order-actions">
+      {% if order.status == 'pending' %}
+        <form method="POST" action="{{ url_for('orders.cancel', order_id=order.id) }}" onsubmit="return confirm('Cancel this order? This can\'t be undone.');">
+          <button class="btn btn-secondary">❌ Cancel order</button>
+        </form>
+      {% endif %}
+
+      {% if order.status != 'cancelled' %}
+        <form method="POST" action="{{ url_for('orders.reorder', order_id=order.id) }}" data-reorder-form>
+          <button class="btn btn-primary">🔁 Reorder these items</button>
+        </form>
+      {% endif %}
+
+      <a class="btn btn-secondary" href="{{ url_for('chat.room', order=order.id) }}">💬 Message about this order</a>
+    </div>
+
+    {# ---------- Review (only for delivered orders) ---------- #}
+    {% if order.status == 'delivered' %}
+      <div class="review-block">
+        <h3 style="margin-top: 0;">{% if review %}Your review 🌸{% else %}How did we do? 🌸{% endif %}</h3>
+        {% if review %}
+          <div class="review-shown">
+            <div class="stars">{% for i in range(5) %}{{ '★' if i < review.rating else '☆' }}{% endfor %}</div>
+            {% if review.comment %}<p class="muted">{{ review.comment }}</p>{% endif %}
+          </div>
+        {% else %}
+          <form method="POST" action="{{ url_for('orders.submit_review', order_id=order.id) }}" class="review-form">
+            <fieldset class="star-picker" aria-label="Rating">
+              {% for n in [5,4,3,2,1] %}
+                <input type="radio" id="r{{ n }}" name="rating" value="{{ n }}" {% if n == 5 %}required checked{% endif %}>
+                <label for="r{{ n }}" title="{{ n }} stars">★</label>
+              {% endfor %}
+            </fieldset>
+            <textarea name="comment" rows="3" placeholder="Tell us how you liked your goodies (optional)"></textarea>
+            <button class="btn btn-primary">Send review 💌</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
   </div>
 
   <aside class="panel">
@@ -62,7 +103,39 @@
     {% if order.notes %}
       <div style="margin-top: 10px;"><b>Note</b><br /><span class="muted">{{ order.notes }}</span></div>
     {% endif %}
-    <a class="btn btn-secondary btn-block" style="margin-top: 14px;" href="{{ url_for('chat.room') }}">Message us 💌</a>
+    <a class="btn btn-secondary btn-block" style="margin-top: 14px;" href="{{ url_for('chat.room', order=order.id) }}">Message us 💌</a>
   </aside>
 </section>
+
+<script>
+  // Reorder: post via fetch, then merge items into cart and go to /cart/
+  document.querySelectorAll('form[data-reorder-form]').forEach(f => {
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = f.querySelector('button');
+      const oldLabel = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Adding to cart…';
+      try {
+        const r = await fetch(f.action, { method: 'POST', headers: { 'Accept': 'application/json' }});
+        const data = await r.json();
+        if (!data.ok) throw new Error(data.error || 'Could not reorder.');
+        try {
+          const KEY = 'pl_cart_v1';
+          const cur = JSON.parse(localStorage.getItem(KEY) || '[]');
+          data.items.forEach(it => {
+            const existing = cur.find(c => c.product_id === it.product_id);
+            if (existing) existing.quantity = (existing.quantity || 1) + it.quantity;
+            else cur.push(it);
+          });
+          localStorage.setItem(KEY, JSON.stringify(cur));
+        } catch(_) {}
+        window.location.href = '{{ url_for("cart.view") }}';
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = oldLabel;
+        alert(err.message);
+      }
+    });
+  });
+</script>
 {% endblock %}

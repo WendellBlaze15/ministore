@@ -23,7 +23,7 @@
     </div>
 
     <form class="chat-foot" id="chatForm">
-      <input id="chatInput" type="text" placeholder="Write a soft message…" autocomplete="off" maxlength="1500" {{ 'disabled' if not chat_id else '' }} />
+      <input id="chatInput" type="text" value="{{ prefill or '' }}" placeholder="Write a soft message…" autocomplete="off" maxlength="1500" {{ 'disabled' if not chat_id else '' }} />
       <button class="btn btn-primary" type="submit" {{ 'disabled' if not chat_id else '' }}>Send</button>
     </form>
   </div>

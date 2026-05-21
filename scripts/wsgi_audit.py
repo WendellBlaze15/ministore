@@ -38,7 +38,9 @@ def probe(session, method, path, **kw):
 
 print("\n=== PUBLIC pages ===")
 public = requests.Session()
-for p in ["/", "/about", "/contact", "/shop/", "/shop/?category=bookmarks",
+for p in ["/", "/about", "/contact",
+         "/help/shipping", "/help/custom-orders", "/help/faq", "/privacy",
+         "/shop/", "/shop/?category=bookmarks",
          "/auth/login", "/auth/register", "/auth/forgot", "/auth/reset",
          "/auth/verify", "/auth/verify?email=test@example.com",
          "/api/ph-address/regions/",

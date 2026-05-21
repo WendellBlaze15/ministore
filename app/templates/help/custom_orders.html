@@ -1,0 +1,33 @@
+{% extends "help/_help_layout.html" %}
+{% block title %}Custom orders — Papier Lab{% endblock %}
+{% set help_tag = 'made just for you' %}
+{% set help_title = 'Custom orders 🎀' %}
+{% set help_blurb = 'Birthday gifts, anniversary keepsakes, fan-art pieces — we love bringing your ideas to life.' %}
+
+{% block help_body %}
+<h3>What we can customise</h3>
+<ul class="bullet">
+  <li>Bookmarks with names, initials, song lyrics or favourite quotes.</li>
+  <li>Keychains with photo prints, miniature paintings, or holographic charms.</li>
+  <li>Polaroid sets of your loved ones, friend group or favourite trips.</li>
+  <li>Bundle gift boxes for birthdays, valentines and graduations.</li>
+</ul>
+
+<h3 style="margin-top: 24px;">How to place a custom order</h3>
+<ol class="bullet" style="list-style: decimal;">
+  <li>Open <a href="{{ url_for('chat.room') }}">chat with the studio</a> and tell us what you have in mind. Share inspiration photos if you'd like!</li>
+  <li>We'll send a quick draft, confirm the price, and tell you the lead time.</li>
+  <li>Pay via GCash or COD using our normal <a href="{{ url_for('cart.view') }}">checkout</a>.</li>
+  <li>We craft your piece by hand and ship it to you in a cute kraft box. 🌸</li>
+</ol>
+
+<h3 style="margin-top: 24px;">Lead time</h3>
+<p>Custom orders typically take <strong>3–7 working days</strong> of crafting before they ship. Bulk orders (e.g., wedding favours) need 2–3 weeks — please reach out early!</p>
+
+<h3 style="margin-top: 24px;">Pricing</h3>
+<p>Custom pieces start at the same price as our regular products. Add-ons like holographic finishes, gold foil, or premium charms have small surcharges that we'll quote upfront.</p>
+
+<p style="margin-top: 24px;">
+  <a href="{{ url_for('chat.room') }}" class="btn btn-primary">Start a custom order 💌</a>
+</p>
+{% endblock %}

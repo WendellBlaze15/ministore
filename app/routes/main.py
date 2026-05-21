@@ -58,6 +58,26 @@ def contact():
     return render_template("contact.html")
 
 
+@bp.route("/help/shipping")
+def shipping():
+    return render_template("help/shipping.html")
+
+
+@bp.route("/help/custom-orders")
+def custom_orders():
+    return render_template("help/custom_orders.html")
+
+
+@bp.route("/help/faq")
+def faq():
+    return render_template("help/faq.html")
+
+
+@bp.route("/privacy")
+def privacy():
+    return render_template("help/privacy.html")
+
+
 # ---------------------------------------------------------------------------
 # PSGC address proxy — exposes a slim subset to the browser:
 #   GET /api/ph-address/regions/
