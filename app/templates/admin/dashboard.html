@@ -2,12 +2,10 @@
 {% block title %}Admin · Dashboard — Papier Lab{% endblock %}
 
 {% block admin %}
-<div class="row-between">
-  <div>
-    <h1>Welcome back ✨</h1>
-    <p class="muted">A soft little overview of your studio.</p>
-  </div>
-  <a class="btn btn-primary" href="{{ url_for('admin.product_new') }}">+ Add product</a>
+<div data-reveal>
+  <span class="tag">dashboard</span>
+  <h1 style="margin: 6px 0 4px;">Welcome back ✨</h1>
+  <p class="muted">A soft little overview of your studio.</p>
 </div>
 
 <div class="metrics" style="margin-top: 20px;">

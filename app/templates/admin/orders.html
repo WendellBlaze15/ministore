@@ -2,10 +2,13 @@
 {% block title %}Admin · Orders{% endblock %}
 
 {% block admin %}
-<h1>Orders</h1>
-<p class="muted">Manage status and customer details.</p>
+<header data-reveal>
+  <span class="tag">orders</span>
+  <h1 style="margin: 6px 0 4px;">Orders</h1>
+  <p class="muted">Manage status and customer details.</p>
+</header>
 
-<div class="chips" style="margin: 20px 0;">
+<div class="chips" style="margin: 20px 0;" data-reveal>
   <a class="chip {{ 'active' if status == 'all' else '' }}" href="{{ url_for('admin.orders', status='all') }}">All</a>
   {% for s in statuses %}
     <a class="chip {{ 'active' if status == s else '' }}" href="{{ url_for('admin.orders', status=s) }}">{{ s|capitalize }}</a>

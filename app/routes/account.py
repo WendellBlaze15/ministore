@@ -184,6 +184,9 @@ def wishlist():
     return render_template("account/wishlist.html", items=items)
 
 
+_UUID_RE = __import__("re").compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+
 @bp.route("/wishlist/toggle", methods=["POST"])
 @login_required
 @require_same_origin
@@ -191,12 +194,12 @@ def wishlist_toggle():
     user = current_user()
     data = request.get_json(silent=True) or request.form
     product_id = (data.get("product_id") or "").strip()
-    if not product_id:
-        return jsonify({"ok": False, "error": "Missing product_id"}), 400
+    if not product_id or not _UUID_RE.match(product_id):
+        return jsonify({"ok": False, "error": "Invalid product."}), 400
 
     svc = get_service_client()
     if not svc:
-        return jsonify({"ok": False, "error": "Server not configured"}), 500
+        return jsonify({"ok": False, "error": "Server not configured."}), 500
 
     try:
         existing = (
@@ -210,4 +213,5 @@ def wishlist_toggle():
         svc.table("wishlists").insert({"user_id": user["id"], "product_id": product_id}).execute()
         return jsonify({"ok": True, "saved": True})
     except Exception as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        current_app.logger.warning("wishlist_toggle failed: %s", exc)
+        return jsonify({"ok": False, "error": "Could not update wishlist. Please try again."}), 500

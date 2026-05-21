@@ -1,42 +1,48 @@
 {% set user = session.get('user') %}
-<header class="navbar">
+{% set endpoint = request.endpoint or '' %}
+{% set in_sidebar_area = endpoint.startswith('admin.') or endpoint.startswith('account.') %}
+<header class="navbar {{ 'navbar--slim' if in_sidebar_area else '' }}">
   <div class="container nav-inner">
     <a href="{{ url_for('main.home') }}" class="brand">
       <span class="brand-mark"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="Papier Lab logo" /></span>
       <span>Papier <span style="color: var(--ink-900);">Lab</span></span>
     </a>
 
+    {% if not in_sidebar_area %}
     <nav class="nav-links">
-      <a href="{{ url_for('main.home') }}" class="{{ 'active' if request.endpoint == 'main.home' else '' }}">Home</a>
-      <a href="{{ url_for('products.shop') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('products.') else '' }}">Shop</a>
-      <a href="{{ url_for('main.about') }}" class="{{ 'active' if request.endpoint == 'main.about' else '' }}">About</a>
-      {% if user %}
-        {% if user.role == 'admin' %}
-          <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' else '' }}">Admin</a>
-          <a href="{{ url_for('admin.products') }}" class="{{ 'active' if request.endpoint and 'product' in request.endpoint and request.endpoint.startswith('admin.') else '' }}">Products</a>
-          <a href="{{ url_for('admin.orders') }}" class="{{ 'active' if request.endpoint == 'admin.orders' else '' }}">Orders</a>
-          <a href="{{ url_for('admin.messages') }}" class="{{ 'active' if request.endpoint and 'chat' in request.endpoint and request.endpoint.startswith('admin.') or request.endpoint == 'admin.messages' else '' }}">Messages</a>
-        {% else %}
-          <a href="{{ url_for('account.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('account.') else '' }}">My Account</a>
-          <a href="{{ url_for('account.orders') }}" class="{{ 'active' if request.endpoint in ['account.orders','orders.my_orders'] else '' }}">My Orders</a>
-          <a href="{{ url_for('chat.room') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('chat.') else '' }}">Chat</a>
-        {% endif %}
+      <a href="{{ url_for('main.home') }}" class="{{ 'active' if endpoint == 'main.home' else '' }}">Home</a>
+      <a href="{{ url_for('products.shop') }}" class="{{ 'active' if endpoint.startswith('products.') else '' }}">Shop</a>
+      <a href="{{ url_for('main.about') }}" class="{{ 'active' if endpoint == 'main.about' else '' }}">About</a>
+      {% if user and user.role != 'admin' %}
+        <a href="{{ url_for('account.index') }}">My Account</a>
+        <a href="{{ url_for('chat.room') }}">Chat</a>
+      {% elif user and user.role == 'admin' %}
+        <a href="{{ url_for('admin.dashboard') }}">Admin dashboard →</a>
       {% endif %}
     </nav>
+    {% else %}
+    <span class="nav-area-label muted">
+      {% if endpoint.startswith('admin.') %}Admin · Papier Lab{% else %}My account{% endif %}
+    </span>
+    {% endif %}
 
     <div class="nav-tail">
       <button class="icon-btn" data-theme-toggle title="Toggle theme" aria-label="Toggle theme">🌙</button>
+      {% if not endpoint.startswith('admin.') %}
       <a class="icon-btn" href="{{ url_for('cart.view') }}" title="Cart" aria-label="Cart">
         <span aria-hidden="true">🛍️</span>
         <span class="cart-pill" data-cart-count style="display:none">0</span>
       </a>
+      {% endif %}
       {% if user %}
         <a class="btn btn-sm btn-secondary hide-on-mobile" href="{{ url_for('auth.logout') }}">Sign out</a>
       {% else %}
         <a class="btn btn-sm btn-secondary hide-on-mobile" href="{{ url_for('auth.login') }}">Sign in</a>
         <a class="btn btn-sm btn-primary hide-on-mobile" href="{{ url_for('auth.register') }}">Join</a>
       {% endif %}
+      {% if not in_sidebar_area %}
       <button class="icon-btn menu-toggle" data-menu-toggle aria-label="Menu">☰</button>
+      {% endif %}
     </div>
   </div>
 </header>

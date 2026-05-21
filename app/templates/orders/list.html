@@ -1,43 +1,35 @@
-{% extends "base.html" %}
+{% extends "account/_layout.html" %}
 {% block title %}My orders — Papier Lab{% endblock %}
 
-{% block content %}
-<section class="page-head">
-  <div class="container">
-    <p class="crumbs"><a href="{{ url_for('main.home') }}">Home</a> · My orders</p>
-    <h1>My orders</h1>
-  </div>
-</section>
+{% block account %}
+<header class="acct-head" data-reveal>
+  <span class="tag">my orders</span>
+  <h1>Every little parcel 📦</h1>
+  <p class="muted">All the goodies you've ordered from Papier Lab.</p>
+</header>
 
-<section class="section" style="padding-top: 24px;">
-  <div class="container">
-    {% if orders %}
-      <div class="card" style="overflow: hidden;">
-        <table class="table">
-          <thead>
-            <tr><th>Order</th><th>Date</th><th>Payment</th><th>Total</th><th>Status</th><th></th></tr>
-          </thead>
-          <tbody>
-            {% for o in orders %}
-            <tr>
-              <td><code>#{{ o.id[:8] }}</code></td>
-              <td>{{ o.created_at[:10] }}</td>
-              <td>{{ o.payment_method|upper }}</td>
-              <td>₱{{ "%.2f"|format(o.total|float) }}</td>
-              <td><span class="status {{ o.status }}">{{ o.status }}</span></td>
-              <td><a class="btn btn-sm btn-secondary" href="{{ url_for('orders.track', order_id=o.id) }}">Track →</a></td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="empty">
-        <h3>No orders yet 🌷</h3>
-        <p>Once you place an order, it'll show up here.</p>
-        <a class="btn btn-primary" href="{{ url_for('products.shop') }}">Start shopping</a>
-      </div>
-    {% endif %}
+<section class="acct-section" data-reveal>
+  {% if orders %}
+  <div class="acct-table">
+    <div class="acct-tr head">
+      <span>Order</span><span>Date</span><span>Payment</span><span>Status</span><span>Total</span>
+    </div>
+    {% for o in orders %}
+    <a href="{{ url_for('orders.track', order_id=o.id) }}" class="acct-tr">
+      <span>#{{ o.id[:8] }}</span>
+      <span>{{ o.created_at[:10] }}</span>
+      <span>{{ (o.payment_method or '')|upper }}</span>
+      <span><span class="pill pill-{{ o.status }}">{{ o.status }}</span></span>
+      <span><b>₱{{ '%.2f' | format(o.total|float) }}</b></span>
+    </a>
+    {% endfor %}
   </div>
+  {% else %}
+  <div class="empty">
+    <h3>No orders yet 🌷</h3>
+    <p>Once you place an order it'll appear here so you can track it.</p>
+    <a class="btn btn-primary" href="{{ url_for('products.shop') }}">Start shopping →</a>
+  </div>
+  {% endif %}
 </section>
 {% endblock %}

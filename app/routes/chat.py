@@ -1,11 +1,15 @@
 """Realtime chat routes (customer <-> admin)."""
-from flask import Blueprint, render_template, jsonify, request
+import re
+
+from flask import Blueprint, render_template, jsonify, request, current_app
 
 from app.utils.auth import login_required, current_user, is_admin
 from app.utils.security import require_same_origin
 from app.services.supabase_client import get_service_client
 
 bp = Blueprint("chat", __name__)
+
+_UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
 def _ensure_chat_for_user(user_id: str) -> str | None:
@@ -77,28 +81,38 @@ def send_message():
     data = request.get_json(silent=True) or {}
     chat_id = (data.get("chat_id") or "").strip()
     body = (data.get("body") or "").strip()
-    if not chat_id or not body:
-        return jsonify({"ok": False, "error": "Missing chat or body"}), 400
+    if not chat_id or not _UUID_RE.match(chat_id):
+        return jsonify({"ok": False, "error": "Invalid chat."}), 400
+    if not body:
+        return jsonify({"ok": False, "error": "Message body is required."}), 400
     if len(body) > 1500:
-        return jsonify({"ok": False, "error": "Message too long"}), 400
+        return jsonify({"ok": False, "error": "Message too long (max 1500 chars)."}), 400
 
     svc = get_service_client()
     if not svc:
-        return jsonify({"ok": False, "error": "Server not configured"}), 500
+        return jsonify({"ok": False, "error": "Server not configured."}), 500
 
     try:
-        resp = svc.table("messages").insert(
-            {
-                "chat_id": chat_id,
-                "sender_id": user["id"],
-                "sender_role": "admin" if is_admin() else "customer",
-                "body": body,
-            }
-        ).execute()
+        chat_owner = (svc.table("chats").select("user_id").eq("id", chat_id).single().execute()).data
+        if not chat_owner:
+            return jsonify({"ok": False, "error": "Chat not found."}), 404
+        if chat_owner["user_id"] != user["id"] and not is_admin():
+            return jsonify({"ok": False, "error": "Forbidden."}), 403
+    except Exception:
+        return jsonify({"ok": False, "error": "Chat not found."}), 404
+
+    try:
+        resp = svc.table("messages").insert({
+            "chat_id": chat_id,
+            "sender_id": user["id"],
+            "sender_role": "admin" if is_admin() else "customer",
+            "body": body,
+        }).execute()
         msg = (resp.data or [None])[0]
         return jsonify({"ok": True, "message": msg})
     except Exception as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        current_app.logger.warning("send_message failed: %s", exc)
+        return jsonify({"ok": False, "error": "Could not send. Please try again."}), 500
 
 
 @bp.route("/seen", methods=["POST"])

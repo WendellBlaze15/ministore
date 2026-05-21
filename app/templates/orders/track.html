@@ -1,5 +1,5 @@
-{% extends "base.html" %}
-{% block title %}Tracking — Papier Lab{% endblock %}
+{% extends "account/_layout.html" %}
+{% block title %}Tracking #{{ order.id[:8] }} — Papier Lab{% endblock %}
 
 {% set steps = [
   ('pending',    '🧾', 'Order placed',    'We received your order — yay!'),
@@ -10,64 +10,59 @@
 {% set status_order = ['pending', 'preparing', 'shipped', 'delivered'] %}
 {% set current_idx = status_order.index(order.status) if order.status in status_order else -1 %}
 
-{% block content %}
-<section class="page-head">
-  <div class="container">
-    <p class="crumbs"><a href="{{ url_for('main.home') }}">Home</a> · <a href="{{ url_for('orders.my_orders') }}">My orders</a> · Tracking</p>
-    <h1>Order #{{ order.id[:8] }}</h1>
-    <p class="muted">Placed on {{ order.created_at[:10] }}</p>
+{% block account %}
+<header class="acct-head" data-reveal>
+  <span class="tag">tracking</span>
+  <h1>Order #{{ order.id[:8] }}</h1>
+  <p class="muted">Placed on {{ order.created_at[:10] }} · {{ (order.payment_method or '')|upper }}</p>
+</header>
+
+<section class="acct-section" data-reveal>
+  {% if order.status == 'cancelled' %}
+  <div class="panel" style="border-left: 4px solid var(--pink-600);">
+    <h3>This order was cancelled</h3>
+    <p class="muted">If this was a mistake, please reach us in chat — we'll sort it out together.</p>
+    <a class="btn btn-secondary" href="{{ url_for('chat.room') }}">Open chat 💬</a>
   </div>
+  {% else %}
+  <div class="timeline">
+    {% for s, emoji, title, blurb in steps %}
+      {% set idx = loop.index0 %}
+      <div class="tl-step {{ 'done' if idx <= current_idx else '' }} {{ 'current' if idx == current_idx else '' }}">
+        <div class="dot">{{ emoji }}</div>
+        <h4>{{ title }}</h4>
+        <p>{{ blurb }}</p>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
 </section>
 
-<section class="section" style="padding-top: 24px;">
-  <div class="container">
-    {% if order.status == 'cancelled' %}
-      <div class="card" style="padding: 24px; border-left: 4px solid var(--pink-600);">
-        <h3>This order was cancelled</h3>
-        <p class="muted">If this was a mistake, please reach us in chat — we'll sort it out together.</p>
-        <a class="btn btn-secondary" href="{{ url_for('chat.room') }}">Open chat</a>
+<section class="acct-section" style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px;" data-reveal>
+  <div class="panel">
+    <h3 style="margin-top: 0;">Items</h3>
+    {% for it in items %}
+      <div class="sum-row">
+        <span>{{ it.name }} × {{ it.quantity }}{% if it.customization %} <small class="muted">— {{ it.customization }}</small>{% endif %}</span>
+        <span>₱{{ '%.2f' | format(it.unit_price|float * it.quantity) }}</span>
       </div>
-    {% else %}
-      <div class="timeline">
-        {% for s, emoji, title, blurb in steps %}
-          {% set idx = loop.index0 %}
-          <div class="tl-step {{ 'done' if idx <= current_idx else '' }} {{ 'current' if idx == current_idx else '' }}">
-            <div class="dot">{{ emoji }}</div>
-            <h4>{{ title }}</h4>
-            <p>{{ blurb }}</p>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-
-    <div class="cart-layout">
-      <div>
-        <div class="panel">
-          <div class="panel-head"><h3>Items</h3></div>
-          {% for it in items %}
-            <div class="sum-row">
-              <span>{{ it.name }} × {{ it.quantity }}{% if it.customization %} <small class="muted">— {{ it.customization }}</small>{% endif %}</span>
-              <span>₱{{ "%.2f"|format(it.unit_price|float * it.quantity) }}</span>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-      <aside class="summary">
-        <h3>Summary</h3>
-        <div class="sum-row"><span>Subtotal</span><span>₱{{ "%.2f"|format(order.subtotal|float) }}</span></div>
-        <div class="sum-row"><span>Shipping</span><span>{% if order.shipping_fee|float == 0 %}Free 🌸{% else %}₱{{ "%.2f"|format(order.shipping_fee|float) }}{% endif %}</span></div>
-        <div class="sum-row total"><span>Total</span><span>₱{{ "%.2f"|format(order.total|float) }}</span></div>
-        <div class="sum-row" style="margin-top: 12px;"><span>Payment</span><span>{{ order.payment_method|upper }}</span></div>
-        <div class="sum-row"><span>Status</span><span><span class="status {{ order.status }}">{{ order.status }}</span></span></div>
-        <div class="divider"></div>
-        <div><b>Delivery to</b></div>
-        <p class="muted" style="margin: 4px 0 0;">{{ order.full_name }}<br />{{ order.contact_number }}<br />{{ order.address }}</p>
-        {% if order.notes %}
-          <div style="margin-top: 10px;"><b>Note</b><br /><span class="muted">{{ order.notes }}</span></div>
-        {% endif %}
-        <a class="btn btn-secondary btn-block" style="margin-top: 14px;" href="{{ url_for('chat.room') }}">Message us 💌</a>
-      </aside>
-    </div>
+    {% endfor %}
   </div>
+
+  <aside class="panel">
+    <h3 style="margin-top: 0;">Summary</h3>
+    <div class="sum-row"><span>Subtotal</span><span>₱{{ '%.2f' | format(order.subtotal|float) }}</span></div>
+    <div class="sum-row"><span>Shipping</span><span>{% if order.shipping_fee|float == 0 %}Free 🌸{% else %}₱{{ '%.2f' | format(order.shipping_fee|float) }}{% endif %}</span></div>
+    <div class="sum-row total"><span>Total</span><span>₱{{ '%.2f' | format(order.total|float) }}</span></div>
+    <div class="sum-row" style="margin-top: 12px;"><span>Payment</span><span>{{ (order.payment_method or '')|upper }}</span></div>
+    <div class="sum-row"><span>Status</span><span class="pill pill-{{ order.status }}">{{ order.status }}</span></div>
+    <div class="divider" style="margin: 14px 0; height: 1px; background: var(--border);"></div>
+    <div><b>Delivery to</b></div>
+    <p class="muted" style="margin: 4px 0 0;">{{ order.full_name }}<br />{{ order.contact_number }}<br />{{ order.address }}</p>
+    {% if order.notes %}
+      <div style="margin-top: 10px;"><b>Note</b><br /><span class="muted">{{ order.notes }}</span></div>
+    {% endif %}
+    <a class="btn btn-secondary btn-block" style="margin-top: 14px;" href="{{ url_for('chat.room') }}">Message us 💌</a>
+  </aside>
 </section>
 {% endblock %}

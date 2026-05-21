@@ -2,13 +2,11 @@
 {% block title %}Admin · Products{% endblock %}
 
 {% block admin %}
-<div class="row-between">
-  <div>
-    <h1>Products</h1>
-    <p class="muted">Add, edit, or pause anything in your shop.</p>
-  </div>
-  <a class="btn btn-primary" href="{{ url_for('admin.product_new') }}">+ Add product</a>
-</div>
+<header data-reveal>
+  <span class="tag">products</span>
+  <h1 style="margin: 6px 0 4px;">Products</h1>
+  <p class="muted">Add, edit, or pause anything in your shop.</p>
+</header>
 
 <div class="panel" style="margin-top: 20px;">
   {% if products %}

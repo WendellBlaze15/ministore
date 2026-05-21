@@ -1,9 +1,12 @@
 {% extends "admin/_layout.html" %}
 {% block title %}Admin · Customers{% endblock %}
 {% block admin %}
-<h1>Customers</h1>
-<p class="muted">Everyone who has registered with Papier Lab.</p>
-<div class="panel" style="margin-top: 20px;">
+<header data-reveal>
+  <span class="tag">customers</span>
+  <h1 style="margin: 6px 0 4px;">Customers</h1>
+  <p class="muted">Everyone who has registered with Papier Lab.</p>
+</header>
+<div class="panel" style="margin-top: 20px;" data-reveal>
   {% if customers %}
     <table class="table">
       <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead>

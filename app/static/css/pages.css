@@ -434,3 +434,14 @@
   color: var(--ink-500);
   margin-top: -4px;
 }
+
+/* Slim navbar variant used inside admin/* and account/* pages.
+   Sidebar already shows section navigation, so we hide duplicates. */
+.navbar--slim .nav-area-label {
+  margin-left: auto;
+  margin-right: auto;
+  font-size: .82rem;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+}
+.navbar--slim .nav-links { display: none; }

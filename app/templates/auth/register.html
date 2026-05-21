@@ -26,26 +26,29 @@
       <h1>Hi! Let's get to know you 🌸</h1>
       <p class="muted">Already a pen pal? <a href="{{ url_for('auth.login') }}" style="color: var(--pink-600); font-weight:600;">Sign in →</a></p>
 
-      <form id="registerForm" method="post" action="{{ url_for('auth.register_post') }}" style="margin-top: 20px;">
-        <div class="field">
-          <label>Full name <span style="color: var(--pink-600)">*</span></label>
+      <form id="registerForm" method="post" action="{{ url_for('auth.register_post') }}" novalidate style="margin-top: 20px;">
+        <div class="field" data-field="full_name">
+          <label>Full name <span class="req">*</span></label>
           <input type="text" id="name" name="full_name" required placeholder="Andrea Cruz" autocomplete="name" />
+          <small class="field-err" data-err></small>
         </div>
-        <div class="field">
-          <label>Email address <span style="color: var(--pink-600)">*</span></label>
+        <div class="field" data-field="email">
+          <label>Email address <span class="req">*</span></label>
           <input type="email" id="email" name="email" required placeholder="hello@papierlab.shop" autocomplete="email" />
+          <small class="field-err" data-err></small>
         </div>
-        <div class="field">
+        <div class="field" data-field="username">
           <label>Username <small class="muted">(optional)</small></label>
           <input type="text" id="username" name="username" placeholder="andrea_papier" autocomplete="username"
                  pattern="^[A-Za-z0-9_.\-]{3,30}$"
                  title="3-30 letters, numbers, dot, dash, or underscore" />
           <small class="help">Used for chat & order notes. Leave blank to use your full name.</small>
         </div>
-        <div class="field">
-          <label>Contact number <span style="color: var(--pink-600)">*</span></label>
+        <div class="field" data-field="contact_number">
+          <label>Contact number <span class="req">*</span></label>
           <input type="tel" id="contact" name="contact_number" required placeholder="09XX XXX XXXX" autocomplete="tel"
                  pattern="^[0-9 +\-()]{7,20}$" title="Digits, spaces, +, -, ( ) only" />
+          <small class="field-err" data-err></small>
         </div>
 
         <fieldset class="ph-address" style="border:1px dashed var(--pink-200); border-radius:14px; padding:14px; margin: 10px 0;">
@@ -76,15 +79,17 @@
         </fieldset>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-          <div class="field">
-            <label>Password <span style="color: var(--pink-600)">*</span></label>
+          <div class="field" data-field="password">
+            <label>Password <span class="req">*</span></label>
             <input type="password" id="password" name="password" minlength="8" required placeholder="At least 8 characters"
                    autocomplete="new-password" />
+            <small class="field-err" data-err></small>
           </div>
-          <div class="field">
-            <label>Confirm password <span style="color: var(--pink-600)">*</span></label>
+          <div class="field" data-field="confirm_password">
+            <label>Confirm password <span class="req">*</span></label>
             <input type="password" id="confirm_password" name="confirm_password" minlength="8" required placeholder="Repeat password"
                    autocomplete="new-password" />
+            <small class="field-err" data-err></small>
           </div>
         </div>
         <button class="btn btn-primary btn-block" type="submit" style="margin-top: 8px;">Create my account</button>
@@ -100,18 +105,111 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/address-ph.js') }}" defer></script>
+<style>
+  .field .req { color: var(--pink-600); margin-left: 2px; }
+  .field-err {
+    display: none;
+    color: #b73670;
+    font-size: .82rem;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  .field.invalid input,
+  .field.invalid select,
+  .field.invalid textarea {
+    border-color: #e85a86 !important;
+    background: #fff3f6 !important;
+    box-shadow: 0 0 0 3px rgba(232, 90, 134, .18) !important;
+  }
+  .field.invalid .field-err { display: block; }
+  .field.invalid label::after {
+    content: ' ⚠';
+    color: #e85a86;
+    font-weight: bold;
+  }
+</style>
 <script>
-  // Client-side guard: confirm passwords match before submit (server checks too).
-  document.getElementById('registerForm').addEventListener('submit', (e) => {
-    const pw = document.getElementById('password').value;
-    const cf = document.getElementById('confirm_password').value;
-    if (pw !== cf) {
+(function () {
+  const form = document.getElementById('registerForm');
+  if (!form) return;
+
+  const rules = {
+    full_name:       { msg: 'Please enter your full name.' },
+    email:           { msg: 'Please enter a valid email address.',
+                       check: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) },
+    contact_number:  { msg: 'Please enter your contact number (7–20 digits).',
+                       check: (v) => /^[0-9 +\-()]{7,20}$/.test(v) },
+    password:        { msg: 'Password must be at least 8 characters.',
+                       check: (v) => v.length >= 8 },
+    confirm_password:{ msg: "Passwords don't match.",
+                       check: (v) => v === document.getElementById('password').value && v.length >= 8 },
+  };
+
+  function setError(name, message) {
+    const wrap = form.querySelector(`[data-field="${name}"]`);
+    if (!wrap) return;
+    wrap.classList.add('invalid');
+    const errEl = wrap.querySelector('[data-err]');
+    if (errEl) errEl.textContent = message;
+  }
+  function clearError(name) {
+    const wrap = form.querySelector(`[data-field="${name}"]`);
+    if (wrap) {
+      wrap.classList.remove('invalid');
+      const errEl = wrap.querySelector('[data-err]');
+      if (errEl) errEl.textContent = '';
+    }
+  }
+
+  Object.keys(rules).forEach((name) => {
+    const wrap = form.querySelector(`[data-field="${name}"]`);
+    const input = wrap?.querySelector('input');
+    if (!input) return;
+    input.addEventListener('blur', () => {
+      const v = input.value.trim();
+      const rule = rules[name];
+      if (!v) { setError(name, rule.msg); return; }
+      if (rule.check && !rule.check(v)) { setError(name, rule.msg); return; }
+      clearError(name);
+    });
+    input.addEventListener('input', () => clearError(name));
+  });
+
+  form.addEventListener('submit', (e) => {
+    let firstInvalid = null;
+    let invalidCount = 0;
+    Object.entries(rules).forEach(([name, rule]) => {
+      const wrap = form.querySelector(`[data-field="${name}"]`);
+      const input = wrap?.querySelector('input');
+      if (!input) return;
+      const v = input.value.trim();
+      let bad = false;
+      if (!v) { bad = true; setError(name, rule.msg); }
+      else if (rule.check && !rule.check(v)) { bad = true; setError(name, rule.msg); }
+      if (bad) {
+        invalidCount += 1;
+        if (!firstInvalid) firstInvalid = input;
+      } else {
+        clearError(name);
+      }
+    });
+
+    if (invalidCount > 0) {
       e.preventDefault();
-      window.toast && window.toast("Passwords don't match.", { type: 'error' });
+      window.toast && window.toast(
+        invalidCount === 1
+          ? 'Please complete the highlighted field.'
+          : `Please fix ${invalidCount} highlighted fields.`,
+        { type: 'error' }
+      );
+      firstInvalid?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      firstInvalid?.focus();
       return;
     }
-    const btn = e.target.querySelector('button[type=submit]');
-    btn.disabled = true; btn.textContent = 'Creating…';
+
+    const btn = form.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Creating account…';
   });
+})();
 </script>
 {% endblock %}
