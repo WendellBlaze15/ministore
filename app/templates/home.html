@@ -39,15 +39,22 @@
     </div>
 
     <div class="hero-art" data-reveal>
-      <figure class="hero-card one">
-        <img src="https://images.unsplash.com/photo-1519682337058-a94d519337bc?auto=format&fit=crop&w=900&q=70" alt="Pastel bookmark" />
-      </figure>
-      <figure class="hero-card two">
-        <img src="https://images.unsplash.com/photo-1611923134239-b9be5816e23d?auto=format&fit=crop&w=900&q=70" alt="Cute keychain" />
-      </figure>
-      <figure class="hero-card three">
-        <img src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=70" alt="Polaroid prints" />
-      </figure>
+      {% set hero_slots = ['one', 'two', 'three'] %}
+      {% for slot in hero_slots %}
+        {% set p = hero_products[loop.index0] if hero_products and loop.index0 < hero_products|length else None %}
+        {% if p %}
+        <figure class="hero-card {{ slot }}">
+          <a href="{{ url_for('products.detail', slug=p.slug) }}" aria-label="{{ p.name }}">
+            <img src="{{ p.cover_image }}" alt="{{ p.name }}" loading="lazy" />
+            <figcaption class="hero-card-cap">{{ p.name }}</figcaption>
+          </a>
+        </figure>
+        {% else %}
+        <figure class="hero-card {{ slot }} hero-card--empty">
+          <span>Your products live here ✨</span>
+        </figure>
+        {% endif %}
+      {% endfor %}
     </div>
   </div>
 </section>
@@ -135,18 +142,22 @@
   <div class="container">
     <div class="story-grid">
       <div class="polaroid-stack" data-reveal>
-        <figure class="polaroid p1">
-          <img src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=700&q=70" alt="" />
-          <figcaption>cutting & sketching</figcaption>
-        </figure>
-        <figure class="polaroid p2">
-          <img src="https://images.unsplash.com/photo-1606293459209-d6c93f53a3a3?auto=format&fit=crop&w=700&q=70" alt="" />
-          <figcaption>packing day ♡</figcaption>
-        </figure>
-        <figure class="polaroid p3">
-          <img src="https://images.unsplash.com/photo-1542038784456-1ea8e935640e?auto=format&fit=crop&w=700&q=70" alt="" />
-          <figcaption>polaroid stash</figcaption>
-        </figure>
+        {% set story_slots = ['p1', 'p2', 'p3'] %}
+        {% for slot in story_slots %}
+          {% set p = story_products[loop.index0] if story_products and loop.index0 < story_products|length else None %}
+          {% if p %}
+          <figure class="polaroid {{ slot }}">
+            <a href="{{ url_for('products.detail', slug=p.slug) }}" aria-label="{{ p.name }}">
+              <img src="{{ p.cover_image }}" alt="{{ p.name }}" loading="lazy" />
+              <figcaption>{{ p.name }}</figcaption>
+            </a>
+          </figure>
+          {% else %}
+          <figure class="polaroid {{ slot }} polaroid--empty">
+            <span>Add a product 🌸</span>
+          </figure>
+          {% endif %}
+        {% endfor %}
       </div>
       <div data-reveal>
         <span class="tag">our story</span>
@@ -162,29 +173,6 @@
           to feel that warmth when your parcel arrives.
         </p>
         <a href="{{ url_for('main.about') }}" class="btn btn-secondary">More about us →</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ╭─────────────────── TESTIMONIALS ───────────────────────╮ -->
-<section class="section" style="padding-top: 0;">
-  <div class="container">
-    <div class="section-head" data-reveal>
-      <h2><small>love letters</small>What our pen pals say</h2>
-    </div>
-    <div class="t-grid">
-      <div class="t-card" data-reveal>
-        <p>“My bookmark arrived in the cutest little envelope. The handwritten note made me cry happy tears! 🥺💕”</p>
-        <div class="who"><div class="avatar">A</div><div><b>Andrea</b><br /><small class="muted">Cebu City</small></div></div>
-      </div>
-      <div class="t-card" data-reveal>
-        <p>“I ordered a custom keychain for my friend's birthday and the seller was so helpful in chat. So worth it!”</p>
-        <div class="who"><div class="avatar">J</div><div><b>Jen</b><br /><small class="muted">Quezon City</small></div></div>
-      </div>
-      <div class="t-card" data-reveal>
-        <p>“The polaroid set turned out PERFECT. Soft pastel colours, exactly like the picture. Will order again ♡”</p>
-        <div class="who"><div class="avatar">M</div><div><b>Mika</b><br /><small class="muted">Davao</small></div></div>
       </div>
     </div>
   </div>

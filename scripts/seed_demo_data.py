@@ -50,7 +50,22 @@ DEMO_PRODUCTS = [
 ]
 
 print("\n=== SEEDING PRODUCTS ===")
+# Respect the deletion ledger — admins explicitly removed these slugs
+# so we don't quietly resurrect them.
+try:
+    banned_slugs = {
+        r["slug"] for r in
+        (svc.table("banned_product_slugs").select("slug").execute()).data or []
+    }
+except Exception:
+    banned_slugs = set()
+if banned_slugs:
+    print(f"  ledger blocks: {len(banned_slugs)} slug(s)")
+
 for p in DEMO_PRODUCTS:
+    if p["slug"] in banned_slugs:
+        print(f"  skipped   {p['slug']} (in deletion ledger)")
+        continue
     existing = (svc.table("products").select("id").eq("slug", p["slug"]).limit(1).execute()).data or []
     payload = {**p, "customizable": True, "is_active": True}
     if existing:
@@ -74,11 +89,25 @@ DEMO_CUSTOMERS = [
 ]
 PWD = "DemoBuyer123!"
 print("\n=== SEEDING CUSTOMERS ===")
+# Respect the email banlist — same idea as banned_product_slugs.
+try:
+    banned_emails = {
+        (r.get("email") or "").lower() for r in
+        (svc.table("banned_emails").select("email").execute()).data or []
+    }
+except Exception:
+    banned_emails = set()
+if banned_emails:
+    print(f"  ledger blocks: {len(banned_emails)} email(s)")
+
 existing_users = svc.auth.admin.list_users()
 existing_by_email = {(getattr(u, 'email', '') or '').lower(): u for u in existing_users}
 customer_ids = []
 for c in DEMO_CUSTOMERS:
     em = c["email"].lower()
+    if em in banned_emails:
+        print(f"  skipped   {em} (in banned_emails)")
+        continue
     if em in existing_by_email:
         user = existing_by_email[em]
         print(f"  exists    {em}")

@@ -159,7 +159,7 @@ Short version:
 | Logo / brand name   | `app/templates/_navbar.html` + `app/templates/_footer.html`             |
 | Categories          | `app/routes/main.py` + the `category` CHECK in `supabase/schema.sql`    |
 | Shipping fee logic  | `_save_product` in `app/routes/cart.py` (set free-ship threshold there) |
-| Home page sections  | `app/templates/home.html` (the hero, stories, testimonials are static)  |
+| Home page sections  | `app/templates/home.html` — the hero collage and "our story" polaroid stack pull live products from Supabase (admin manages them) |
 
 ---
 

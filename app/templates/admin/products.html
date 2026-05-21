@@ -2,10 +2,13 @@
 {% block title %}Admin · Products{% endblock %}
 
 {% block admin %}
-<header data-reveal>
-  <span class="tag">products</span>
-  <h1 style="margin: 6px 0 4px;">Products</h1>
-  <p class="muted">Add, edit, or pause anything in your shop.</p>
+<header data-reveal style="display:flex; align-items:flex-end; justify-content:space-between; gap: 12px; flex-wrap: wrap;">
+  <div>
+    <span class="tag">products</span>
+    <h1 style="margin: 6px 0 4px;">Products</h1>
+    <p class="muted">Add, edit, or pause anything in your shop. Deleted products are tracked so they don't come back.</p>
+  </div>
+  <a class="btn btn-sm btn-secondary" href="{{ url_for('admin.banned_products') }}">🗂 Deletion ledger</a>
 </header>
 
 <div class="panel" style="margin-top: 20px;">

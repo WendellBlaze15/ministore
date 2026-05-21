@@ -1,0 +1,51 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Admin · Blocked products — Papier Lab{% endblock %}
+{% block admin %}
+<header data-reveal>
+  <span class="tag">deletion ledger</span>
+  <h1 style="margin: 6px 0 4px;">Removed products 🗂️</h1>
+  <p class="muted">
+    When you delete a product its slug is added here so nothing (not even
+    demo seed scripts) can quietly re-create it. Lift the block to
+    re-allow that slug.
+  </p>
+  <a class="btn btn-sm btn-secondary" href="{{ url_for('admin.products') }}">← All products</a>
+</header>
+
+<section class="panel" data-reveal>
+  {% if banned %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Slug</th>
+        <th>Last name</th>
+        <th>Reason</th>
+        <th>Blocked at</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in banned %}
+      <tr>
+        <td><code>{{ row.slug }}</code></td>
+        <td>{{ row.name or '—' }}</td>
+        <td><small class="muted">{{ row.reason or 'removed by admin' }}</small></td>
+        <td><small class="muted">{{ (row.banned_at or '')[:10] }}</small></td>
+        <td>
+          <form method="post" action="{{ url_for('admin.unban_product', slug=row.slug) }}" style="display:inline;"
+                onsubmit="return confirm('Allow {{ row.slug }} to be re-created?');">
+            <button class="btn btn-sm btn-secondary" type="submit">↺ Allow again</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <h3>Nothing blocked 🌷</h3>
+    <p>When you delete a product its slug shows up here automatically.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

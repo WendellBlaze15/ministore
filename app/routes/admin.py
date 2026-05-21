@@ -259,13 +259,76 @@ def product_edit(product_id):
 @require_same_origin
 def product_delete(product_id):
     svc = get_service_client()
+    if not svc:
+        flash("Server not configured.", "error")
+        return redirect(url_for("admin.products"))
+
+    # Grab the slug + name BEFORE the delete so we can tombstone it and
+    # stop the demo seed from re-creating the same product later.
+    slug = ""
+    name = ""
+    try:
+        row = (
+            svc.table("products").select("slug, name").eq("id", product_id).single().execute()
+        ).data
+        if row:
+            slug = (row.get("slug") or "").strip()
+            name = (row.get("name") or "").strip()
+    except Exception:
+        pass
+
+    me = current_user() or {}
+    try:
+        svc.table("products").delete().eq("id", product_id).execute()
+        # Best-effort tombstone — the DB trigger from migration 010 also
+        # does this, but doing it from Python means we still cover envs
+        # where the migration hasn't been applied yet.
+        if slug:
+            try:
+                svc.table("banned_product_slugs").upsert(
+                    {"slug": slug, "name": name,
+                     "reason": "removed by admin",
+                     "banned_by": me.get("id")},
+                    on_conflict="slug",
+                ).execute()
+            except Exception as exc:
+                current_app.logger.info("banned_product_slugs write skipped: %s", exc)
+        flash("Product deleted.", "success")
+    except Exception as exc:
+        flash(f"Could not delete: {exc}", "error")
+    return redirect(url_for("admin.products"))
+
+
+@bp.route("/products/banned", methods=["GET"])
+@admin_required
+def banned_products():
+    """List of product slugs blocked from re-seeding / re-creation."""
+    svc = get_service_client()
+    rows = []
     if svc:
         try:
-            svc.table("products").delete().eq("id", product_id).execute()
-            flash("Product deleted.", "success")
+            rows = (
+                svc.table("banned_product_slugs")
+                .select("slug, name, reason, banned_at")
+                .order("banned_at", desc=True).execute()
+            ).data or []
+        except Exception:
+            rows = []
+    return render_template("admin/banned_products.html", banned=rows)
+
+
+@bp.route("/products/banned/<slug>/unban", methods=["POST"])
+@admin_required
+@require_same_origin
+def unban_product(slug: str):
+    svc = get_service_client()
+    if svc:
+        try:
+            svc.table("banned_product_slugs").delete().eq("slug", slug).execute()
+            flash(f"\"{slug}\" can be re-created again.", "success")
         except Exception as exc:
-            flash(f"Could not delete: {exc}", "error")
-    return redirect(url_for("admin.products"))
+            flash(f"Could not unban: {exc}", "error")
+    return redirect(url_for("admin.banned_products"))
 
 
 def _iso(value):

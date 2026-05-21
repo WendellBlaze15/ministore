@@ -34,18 +34,40 @@ def home():
         try:
             resp = (
                 client.table("products")
-                .select("id, name, slug, price, category, cover_image, is_featured")
+                .select("id, name, slug, price, category, cover_image, is_featured, stock")
                 .eq("is_active", True)
                 .order("is_featured", desc=True)
                 .order("created_at", desc=True)
-                .limit(8)
+                .limit(12)
                 .execute()
             )
             products = resp.data or []
         except Exception:
             products = []
 
-    return render_template("home.html", categories=CATEGORIES, featured=products)
+    # The hero collage + story polaroid stack now pull from real admin
+    # products. We pick the first images that actually have a cover so
+    # the homepage is never blank or showing stock-photo fillers.
+    with_image = [p for p in products if (p.get("cover_image") or "").strip()]
+    hero_products = with_image[:3]
+    # Use the next set of products for the "our story" polaroid stack so
+    # the homepage shows up to six distinct items at a glance. If we
+    # only have 3 products total, the story stack reuses them (better
+    # than empty placeholders).
+    if len(with_image) >= 6:
+        story_products = with_image[3:6]
+    elif with_image:
+        story_products = with_image[:3]
+    else:
+        story_products = []
+
+    return render_template(
+        "home.html",
+        categories=CATEGORIES,
+        featured=products[:8],
+        hero_products=hero_products,
+        story_products=story_products,
+    )
 
 
 @bp.route("/about")

@@ -567,23 +567,32 @@ html[data-theme='dark'] .navbar { background: rgba(29, 20, 26, .8); }
 .polaroid.p2 { width: 55%; bottom: 0; right: 4%; transform: rotate(5deg);  }
 .polaroid.p3 { width: 42%; top: 22%; right: 10%; transform: rotate(-2deg); z-index: 1;}
 
-/* Testimonial cards */
-.t-grid { display: grid; gap: 18px; grid-template-columns: repeat(3, 1fr); }
-@media (max-width: 880px) { .t-grid { grid-template-columns: 1fr; } }
-.t-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 24px; position: relative;
+/* Empty placeholders for hero/story tiles when admin has fewer than 6 products. */
+.hero-card--empty,
+.polaroid--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pink-700, #c5366d);
+  font-family: var(--font-display, serif);
+  text-align: center;
+  padding: 18px;
+  background: linear-gradient(135deg, #fff7fb, #fff);
+  border: 1px dashed rgba(244, 114, 182, .45);
 }
-.t-card::before {
-  content: '“';
-  font-family: var(--font-display);
-  position: absolute; top: -8px; left: 16px;
-  font-size: 4rem; color: var(--pink-300); line-height: 1;
+.hero-card a, .polaroid a { display: block; color: inherit; text-decoration: none; }
+.hero-card-cap {
+  position: absolute;
+  bottom: 6px; left: 50%; transform: translateX(-50%);
+  background: rgba(255, 255, 255, .9);
+  padding: 4px 10px; border-radius: 999px;
+  font-size: .75rem; color: var(--pink-700, #c5366d);
+  font-weight: 600;
+  max-width: 90%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.t-card p { font-size: .95rem; color: var(--ink-700); margin-top: 12px; }
-.t-card .who { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.hero-card { position: relative; overflow: hidden; }
+
 .avatar {
   width: 38px; height: 38px; border-radius: 50%;
   background: linear-gradient(135deg, var(--pink-300), var(--pink-500));
