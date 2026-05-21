@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Contact us — Papier Lab{% endblock %}
+
+{% block content %}
+<section class="hero" style="padding-bottom: 24px;">
+  <div class="container">
+    <span class="tag" data-reveal>get in touch</span>
+    <h1 style="margin-top: 10px; max-width: 720px;" data-reveal>We'd love to hear from you 💌</h1>
+    <p class="muted" style="max-width: 580px;" data-reveal>
+      For custom orders, shipping questions, or just to say hi — message us
+      on socials or open a chat. We usually reply within a few hours 🌸
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container contact-grid">
+    <div data-reveal>
+      <h2>Find us on socials</h2>
+      <p class="muted" style="max-width: 460px;">
+        Pictures of every batch, behind-the-scenes of the studio, and live
+        restocks land here first. Send us a DM anytime!
+      </p>
+      {% set size = 'lg' %}
+      {% include "_socials.html" %}
+
+      <div class="contact-cards" style="margin-top: 30px;">
+        <a class="contact-card" href="https://www.facebook.com/share/1Y3251usiE/?mibextid=wwXIfr" target="_blank" rel="noopener">
+          <div class="ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12.06C22 6.51 17.52 2 12 2S2 6.51 2 12.06c0 5 3.66 9.14 8.44 9.94v-7.03H7.9v-2.91h2.54V9.84c0-2.51 1.49-3.89 3.77-3.89 1.09 0 2.24.2 2.24.2v2.47h-1.26c-1.24 0-1.63.78-1.63 1.58v1.9h2.78l-.45 2.91h-2.33V22c4.78-.8 8.44-4.94 8.44-9.94z"/></svg>
+          </div>
+          <div>
+            <b>Facebook</b>
+            <small class="muted">Send us a DM on Messenger</small>
+          </div>
+          <span class="arr">→</span>
+        </a>
+        <a class="contact-card" href="https://www.instagram.com/papierlab_" target="_blank" rel="noopener">
+          <div class="ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38a3.72 3.72 0 0 1-1.38.9c-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.72 3.72 0 0 1-1.38-.9 3.72 3.72 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16zm0 1.94c-3.14 0-3.51.01-4.75.07-1.07.05-1.65.23-2.04.38-.51.2-.88.44-1.27.83-.39.39-.63.76-.83 1.27-.15.39-.33.97-.38 2.04-.06 1.24-.07 1.61-.07 4.75s.01 3.51.07 4.75c.05 1.07.23 1.65.38 2.04.2.51.44.88.83 1.27.39.39.76.63 1.27.83.39.15.97.33 2.04.38 1.24.06 1.61.07 4.75.07s3.51-.01 4.75-.07c1.07-.05 1.65-.23 2.04-.38.51-.2.88-.44 1.27-.83.39-.39.63-.76.83-1.27.15-.39.33-.97.38-2.04.06-1.24.07-1.61.07-4.75s-.01-3.51-.07-4.75c-.05-1.07-.23-1.65-.38-2.04a3.42 3.42 0 0 0-.83-1.27 3.42 3.42 0 0 0-1.27-.83c-.39-.15-.97-.33-2.04-.38-1.24-.06-1.61-.07-4.75-.07zm0 3.3a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2zm0 1.94a2.66 2.66 0 1 0 0 5.32 2.66 2.66 0 0 0 0-5.32zm5.85-2.16a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0z"/></svg>
+          </div>
+          <div>
+            <b>Instagram</b>
+            <small class="muted">@papierlab_ · behind the scenes</small>
+          </div>
+          <span class="arr">→</span>
+        </a>
+        <a class="contact-card" href="https://www.tiktok.com/@papierlab_?_r=1&_t=ZS-96XQDlbDmbM" target="_blank" rel="noopener">
+          <div class="ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.3 0 .58.05.85.13V9.4a6.34 6.34 0 0 0-1-.07A6.33 6.33 0 0 0 5.83 21.5a6.33 6.33 0 0 0 10.62-4.85V8.86a8.16 8.16 0 0 0 4.77 1.52V6.93a4.85 4.85 0 0 1-1.63-.24z"/></svg>
+          </div>
+          <div>
+            <b>TikTok</b>
+            <small class="muted">@papierlab_ · packing videos</small>
+          </div>
+          <span class="arr">→</span>
+        </a>
+      </div>
+    </div>
+
+    <aside class="contact-side" data-reveal>
+      <div class="brand-mark brand-mark--lg" style="margin-bottom: 18px;">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Papier Lab" />
+      </div>
+      <h3>Need to talk faster?</h3>
+      <p class="muted">If you're an existing customer, open a chat from your account and we'll reply as soon as we're at the studio table.</p>
+      <a href="{{ url_for('chat.room') }}" class="btn btn-primary btn-block" style="margin-top: 12px;">Open a chat 💬</a>
+      <a href="{{ url_for('products.shop') }}" class="btn btn-secondary btn-block" style="margin-top: 8px;">Browse the shop</a>
+
+      <div class="divider" style="margin: 22px 0;"></div>
+
+      <h4 style="margin: 0 0 6px;">Studio hours</h4>
+      <p class="muted" style="margin: 0;">Mon — Sat · 9:00 AM to 7:00 PM<br />(Asia/Manila)</p>
+    </aside>
+  </div>
+</section>
+{% endblock %}

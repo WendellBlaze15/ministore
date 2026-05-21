@@ -29,25 +29,27 @@
       <form id="registerForm" method="post" action="{{ url_for('auth.register_post') }}" novalidate style="margin-top: 20px;">
         <div class="field" data-field="full_name">
           <label>Full name <span class="req">*</span></label>
-          <input type="text" id="name" name="full_name" required placeholder="Andrea Cruz" autocomplete="name" />
+          <input type="text" id="name" name="full_name" required autocomplete="name" />
           <small class="field-err" data-err></small>
         </div>
         <div class="field" data-field="email">
           <label>Email address <span class="req">*</span></label>
-          <input type="email" id="email" name="email" required placeholder="hello@papierlab.shop" autocomplete="email" />
+          <input type="email" id="email" name="email" required autocomplete="email" />
           <small class="field-err" data-err></small>
         </div>
         <div class="field" data-field="username">
           <label>Username <small class="muted">(optional)</small></label>
-          <input type="text" id="username" name="username" placeholder="andrea_papier" autocomplete="username"
+          <input type="text" id="username" name="username" autocomplete="username"
                  pattern="^[A-Za-z0-9_.\-]{3,30}$"
                  title="3-30 letters, numbers, dot, dash, or underscore" />
           <small class="help">Used for chat & order notes. Leave blank to use your full name.</small>
         </div>
         <div class="field" data-field="contact_number">
           <label>Contact number <span class="req">*</span></label>
-          <input type="tel" id="contact" name="contact_number" required placeholder="09XX XXX XXXX" autocomplete="tel"
-                 pattern="^[0-9 +\-()]{7,20}$" title="Digits, spaces, +, -, ( ) only" />
+          <input type="tel" id="contact" name="contact_number" required autocomplete="tel"
+                 inputmode="numeric"
+                 pattern="^[0-9 +\-()]{7,20}$" title="Digits, spaces, +, -, ( ) only - no letters" />
+          <small class="help">Numbers only · 7 to 20 digits.</small>
           <small class="field-err" data-err></small>
         </div>
 
@@ -73,30 +75,28 @@
           </div>
           <div class="field" style="margin-top: 6px;">
             <label>House # / Street / Subdivision</label>
-            <input type="text" id="address" name="address" placeholder="e.g. 123 Rosal St., Mabolo Heights" autocomplete="street-address" />
-            <small class="help">Leave the dropdowns blank kung gusto mong ifill-up sa checkout na lang. 🌸</small>
+            <input type="text" id="address" name="address" autocomplete="street-address" />
+            <small class="help">You can skip this and fill it in at checkout. 🌸</small>
           </div>
         </fieldset>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div class="field" data-field="password">
             <label>Password <span class="req">*</span></label>
-            <input type="password" id="password" name="password" minlength="8" required placeholder="At least 8 characters"
-                   autocomplete="new-password" />
+            <input type="password" id="password" name="password" minlength="8" required autocomplete="new-password" />
+            <small class="help">At least 8 characters.</small>
             <small class="field-err" data-err></small>
           </div>
           <div class="field" data-field="confirm_password">
             <label>Confirm password <span class="req">*</span></label>
-            <input type="password" id="confirm_password" name="confirm_password" minlength="8" required placeholder="Repeat password"
-                   autocomplete="new-password" />
+            <input type="password" id="confirm_password" name="confirm_password" minlength="8" required autocomplete="new-password" />
             <small class="field-err" data-err></small>
           </div>
         </div>
         <button class="btn btn-primary btn-block" type="submit" style="margin-top: 8px;">Create my account</button>
       </form>
 
-      <div class="auth-divider">protected by Supabase Auth</div>
-      <p class="muted" style="font-size:.85rem;">By creating an account you agree to our terms & soft pink privacy policy.</p>
+      <p class="muted" style="font-size:.85rem; margin-top: 22px;">By creating an account you agree to our terms & soft pink privacy policy.</p>
     </div>
   </section>
 </div>
@@ -127,6 +127,23 @@
     color: #e85a86;
     font-weight: bold;
   }
+  .field.match-ok input {
+    border-color: #6fcf97 !important;
+    background: #f3fff8 !important;
+    box-shadow: 0 0 0 3px rgba(111, 207, 151, .18) !important;
+  }
+  .field.match-ok .field-err { display: block; }
+  .field.match-ok label::after {
+    content: ' ✓';
+    color: #2d7a47;
+    font-weight: bold;
+  }
+  .field .help {
+    display: block;
+    color: var(--ink-500);
+    font-size: .82rem;
+    margin-top: 4px;
+  }
 </style>
 <script>
 (function () {
@@ -137,13 +154,59 @@
     full_name:       { msg: 'Please enter your full name.' },
     email:           { msg: 'Please enter a valid email address.',
                        check: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) },
-    contact_number:  { msg: 'Please enter your contact number (7–20 digits).',
-                       check: (v) => /^[0-9 +\-()]{7,20}$/.test(v) },
+    contact_number:  { msg: 'Numbers only. Please enter 7-20 digits.',
+                       check: (v) => /^[0-9 +\-()]{7,20}$/.test(v) && /\d/.test(v) },
     password:        { msg: 'Password must be at least 8 characters.',
                        check: (v) => v.length >= 8 },
-    confirm_password:{ msg: "Passwords don't match.",
+    confirm_password:{ msg: "Passwords don't match yet.",
                        check: (v) => v === document.getElementById('password').value && v.length >= 8 },
   };
+
+  // Phone field: block letters as you type, keep only allowed characters.
+  const phone = document.getElementById('contact');
+  if (phone) {
+    phone.addEventListener('keypress', (e) => {
+      const allowed = /^[0-9 +\-()]$/;
+      if (!allowed.test(e.key)) e.preventDefault();
+    });
+    phone.addEventListener('input', () => {
+      const cleaned = phone.value.replace(/[^0-9 +\-()]/g, '');
+      if (cleaned !== phone.value) phone.value = cleaned;
+    });
+    phone.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      phone.value = (phone.value + text).replace(/[^0-9 +\-()]/g, '').slice(0, 20);
+    });
+  }
+
+  // Real-time password match feedback.
+  const pw = document.getElementById('password');
+  const cf = document.getElementById('confirm_password');
+  const cfWrap = form.querySelector('[data-field="confirm_password"]');
+  const pwWrap = form.querySelector('[data-field="password"]');
+
+  function syncPasswordMatch() {
+    const cfErr = cfWrap?.querySelector('[data-err]');
+    if (!pw.value && !cf.value) { clearError('confirm_password'); return; }
+    if (cf.value.length === 0) { clearError('confirm_password'); return; }
+    if (pw.value.length < 8) {
+      setError('password', 'Password must be at least 8 characters.');
+    } else {
+      clearError('password');
+    }
+    if (cf.value === pw.value && cf.value.length >= 8) {
+      cfWrap.classList.remove('invalid');
+      cfWrap.classList.add('match-ok');
+      if (cfErr) { cfErr.textContent = 'Passwords match ✓'; cfErr.style.color = '#2d7a47'; cfErr.style.display = 'block'; }
+    } else {
+      cfWrap.classList.remove('match-ok');
+      setError('confirm_password', "Passwords don't match yet.");
+      if (cfErr) cfErr.style.color = '';
+    }
+  }
+  pw?.addEventListener('input', syncPasswordMatch);
+  cf?.addEventListener('input', syncPasswordMatch);
 
   function setError(name, message) {
     const wrap = form.querySelector(`[data-field="${name}"]`);

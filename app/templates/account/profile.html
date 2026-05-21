@@ -23,8 +23,10 @@
       </div>
       <div class="field">
         <label>Contact number</label>
-        <input type="tel" name="contact_number" value="{{ profile.contact_number or '' }}"
-               pattern="^[0-9 +\-()]{7,20}$" autocomplete="tel" />
+        <input type="tel" id="profileContact" name="contact_number" value="{{ profile.contact_number or '' }}"
+               inputmode="numeric" pattern="^[0-9 +\-()]{7,20}$"
+               title="Digits, spaces, +, -, ( ) only - no letters" autocomplete="tel" />
+        <small class="help">Numbers only.</small>
       </div>
     </div>
 
@@ -36,8 +38,7 @@
 
     <div class="field">
       <label>Delivery address</label>
-      <textarea name="address" rows="3"
-                placeholder="House #, street, barangay, city, province, ZIP">{{ profile.address or '' }}</textarea>
+      <textarea name="address" rows="3">{{ profile.address or '' }}</textarea>
       <small class="help">Saves you time at checkout. Want a PH-address picker? Use it during registration.</small>
     </div>
 
@@ -47,4 +48,17 @@
     </div>
   </form>
 </section>
+<script>
+  (function () {
+    const phone = document.getElementById('profileContact');
+    if (!phone) return;
+    phone.addEventListener('keypress', (e) => {
+      if (!/^[0-9 +\-()]$/.test(e.key)) e.preventDefault();
+    });
+    phone.addEventListener('input', () => {
+      const c = phone.value.replace(/[^0-9 +\-()]/g, '');
+      if (c !== phone.value) phone.value = c;
+    });
+  })();
+</script>
 {% endblock %}

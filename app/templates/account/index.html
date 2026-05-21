@@ -21,13 +21,23 @@
   </div>
   <div class="acct-card">
     <div class="ico">📍</div>
-    <b>{{ (profile.address[:24] + '…') if (profile.address and profile.address|length > 24) else (profile.address or '—') }}</b>
-    <small class="muted">delivery address</small>
+    {% if profile.address %}
+      <b>{{ (profile.address[:24] + '…') if (profile.address|length > 24) else profile.address }}</b>
+      <small class="muted">delivery address</small>
+    {% else %}
+      <b><a href="{{ url_for('account.profile') }}" style="color:var(--pink-600)">Add address</a></b>
+      <small class="muted">delivery address</small>
+    {% endif %}
   </div>
   <div class="acct-card">
     <div class="ico">📞</div>
-    <b>{{ profile.contact_number or '—' }}</b>
-    <small class="muted">contact number</small>
+    {% if profile.contact_number %}
+      <b>{{ profile.contact_number }}</b>
+      <small class="muted">contact number</small>
+    {% else %}
+      <b><a href="{{ url_for('account.profile') }}" style="color:var(--pink-600)">Add number</a></b>
+      <small class="muted">contact number</small>
+    {% endif %}
   </div>
 </section>
 
@@ -45,7 +55,7 @@
     <a href="{{ url_for('orders.track', order_id=o.id) }}" class="acct-tr">
       <span>#{{ o.id[:8] }}</span>
       <span>{{ o.created_at[:10] }}</span>
-      <span>{{ o.payment_method or '—' }}</span>
+      <span>{{ (o.payment_method or 'cod').upper() }}</span>
       <span><span class="pill pill-{{ o.status }}">{{ o.status }}</span></span>
       <span><b>₱{{ '%.2f' | format(o.total) }}</b></span>
     </a>

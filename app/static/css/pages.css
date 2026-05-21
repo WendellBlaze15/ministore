@@ -445,3 +445,86 @@
   letter-spacing: .14em;
 }
 .navbar--slim .nav-links { display: none; }
+
+/* ============================================================
+   Social media icons (Facebook / Instagram / TikTok)
+============================================================ */
+.socials {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.socials a {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--pink-700);
+  transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.socials a:hover {
+  background: var(--pink-100);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -10px rgba(236, 79, 138, .55);
+}
+.socials svg {
+  width: 18px; height: 18px;
+  fill: currentColor;
+}
+.socials--lg a { width: 56px; height: 56px; }
+.socials--lg svg { width: 24px; height: 24px; }
+
+/* ============================================================
+   Contact page
+============================================================ */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 36px;
+  align-items: start;
+}
+@media (max-width: 880px) { .contact-grid { grid-template-columns: 1fr; } }
+
+.contact-side {
+  background: linear-gradient(160deg, var(--pink-100), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  text-align: center;
+}
+.contact-side .brand-mark--lg { margin-left: auto; margin-right: auto; }
+.contact-side .divider { height: 1px; background: var(--border); }
+
+.contact-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 520px;
+}
+.contact-card {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.contact-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--pink-300);
+  box-shadow: 0 16px 30px -22px rgba(236, 79, 138, .55);
+}
+.contact-card .ico {
+  width: 52px; height: 52px; border-radius: 14px;
+  background: var(--pink-100);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--pink-700);
+}
+.contact-card .ico svg { width: 24px; height: 24px; fill: currentColor; }
+.contact-card b { display: block; font-family: var(--font-display); color: var(--pink-700); }
+.contact-card small { display: block; }
+.contact-card .arr { color: var(--pink-500); font-weight: 700; font-size: 1.2rem; }

@@ -18,7 +18,7 @@
     <a href="{{ url_for('orders.track', order_id=o.id) }}" class="acct-tr">
       <span>#{{ o.id[:8] }}</span>
       <span>{{ o.created_at[:10] }}</span>
-      <span>{{ o.payment_method or '—' }}</span>
+      <span>{{ (o.payment_method or 'cod').upper() }}</span>
       <span><span class="pill pill-{{ o.status }}">{{ o.status }}</span></span>
       <span><b>₱{{ '%.2f' | format(o.total) }}</b></span>
     </a>

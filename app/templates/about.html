@@ -23,7 +23,14 @@
       <h2>Made for readers, dreamers & gift-givers.</h2>
       <p>Every order is made-to-order in our tiny home studio. We source pastel paper, acrylic charms, and matte film, then hand-cut, laminate, and finish each piece with a bow before packing.</p>
       <p>If you have an idea, just message us in chat. We absolutely love custom orders — names, dates, favourite quotes, polaroid sets of your loved ones, you name it.</p>
-      <a href="{{ url_for('products.shop') }}" class="btn btn-primary">Start shopping</a>
+      <div style="display:flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
+        <a href="{{ url_for('products.shop') }}" class="btn btn-primary">Start shopping</a>
+        <a href="{{ url_for('main.contact') }}" class="btn btn-secondary">Contact us 💌</a>
+      </div>
+      <div style="margin-top: 20px;">
+        <small class="muted" style="display:block; text-transform:uppercase; letter-spacing:.14em; margin-bottom: 8px;">Follow the studio</small>
+        {% include "_socials.html" %}
+      </div>
     </div>
   </div>
 </section>

@@ -24,7 +24,7 @@
             <span class="avatar avatar-sm">{{ ((c.profiles or {}).full_name or (c.profiles or {}).email or 'C')[:1] | upper }}</span>
             <div>
               <b>{{ (c.profiles or {}).full_name or 'Customer' }}</b>
-              <small class="muted">{{ (c.profiles or {}).email or '—' }}</small>
+              <small class="muted">{{ (c.profiles or {}).email or 'pending email' }}</small>
             </div>
           </div>
         </td>

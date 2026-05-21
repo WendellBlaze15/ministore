@@ -9,11 +9,7 @@
         <p class="muted" style="max-width: 320px;">
           Tiny handmade goods, wrapped up with love. Bookmarks, keychains, polaroid prints and crafts — all made-to-order in the Philippines.
         </p>
-        <div style="display:flex; gap: 8px; margin-top: 8px;">
-          <a class="icon-btn" href="#" aria-label="Instagram">📷</a>
-          <a class="icon-btn" href="#" aria-label="TikTok">🎵</a>
-          <a class="icon-btn" href="#" aria-label="Facebook">💌</a>
-        </div>
+        {% include "_socials.html" %}
       </div>
       <div>
         <h5>Shop</h5>
@@ -25,9 +21,8 @@
       <div>
         <h5>Help</h5>
         <a href="{{ url_for('main.about') }}">About us</a>
+        <a href="{{ url_for('main.contact') }}">Contact us</a>
         <a href="{{ url_for('chat.room') }}">Chat with us</a>
-        <a href="#">Shipping & returns</a>
-        <a href="#">Custom orders</a>
       </div>
       <div>
         <h5>Account</h5>
@@ -41,8 +36,8 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© {{ 2026 }} Papier Lab — handmade with 🌸 in the Philippines.</span>
-      <span>Built with Flask · Supabase · Vercel</span>
+      <span>© 2026 Papier Lab — handmade with 🌸 in the Philippines.</span>
+      <span>made with love · est. 2026</span>
     </div>
   </div>
 </footer>

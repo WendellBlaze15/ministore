@@ -23,7 +23,7 @@
     <aside class="summary">
       <h3>Order summary</h3>
       <div class="sum-row"><span>Subtotal</span><span id="sumSubtotal">₱0.00</span></div>
-      <div class="sum-row"><span>Shipping</span><span id="sumShipping">—</span></div>
+      <div class="sum-row"><span>Shipping</span><span id="sumShipping">computed at checkout</span></div>
       <div class="sum-row total"><span>Total</span><span id="sumTotal">₱0.00</span></div>
       <p class="help" style="margin-top: 8px;">🌸 Free shipping on orders over ₱1,500.</p>
 
@@ -84,7 +84,7 @@
     const sub = cart.subtotal();
     const shipping = sub === 0 ? 0 : (sub >= 1500 ? 0 : 80);
     sumSub.textContent = php(sub);
-    sumShip.textContent = sub === 0 ? '—' : (shipping === 0 ? 'Free 🌸' : php(shipping));
+    sumShip.textContent = sub === 0 ? 'computed at checkout' : (shipping === 0 ? 'Free 🌸' : php(shipping));
     sumTot.textContent = php(sub + shipping);
     if (goCheckout) goCheckout.style.pointerEvents = items.length ? '' : 'none';
     if (goCheckout) goCheckout.style.opacity = items.length ? '' : '0.5';

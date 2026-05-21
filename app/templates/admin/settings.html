@@ -16,7 +16,10 @@
     </div>
     <div class="field">
       <label>Contact number</label>
-      <input type="tel" name="contact_number" value="{{ profile.contact_number or '' }}" pattern="^[0-9 +\-()]{7,20}$" />
+      <input type="tel" id="adminContact" name="contact_number" value="{{ profile.contact_number or '' }}"
+             inputmode="numeric" pattern="^[0-9 +\-()]{7,20}$"
+             title="Digits, spaces, +, -, ( ) only - no letters" />
+      <small class="help">Numbers only.</small>
     </div>
     <div class="field">
       <label>Email</label>
@@ -47,4 +50,17 @@
     <li><b>RLS</b><span class="muted">enabled on profiles, orders, chats, messages, wishlists</span></li>
   </ul>
 </section>
+<script>
+  (function () {
+    const phone = document.getElementById('adminContact');
+    if (!phone) return;
+    phone.addEventListener('keypress', (e) => {
+      if (!/^[0-9 +\-()]$/.test(e.key)) e.preventDefault();
+    });
+    phone.addEventListener('input', () => {
+      const c = phone.value.replace(/[^0-9 +\-()]/g, '');
+      if (c !== phone.value) phone.value = c;
+    });
+  })();
+</script>
 {% endblock %}

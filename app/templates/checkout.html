@@ -20,17 +20,19 @@
       </div>
       <div class="field">
         <label>Contact number</label>
-        <input type="tel" id="contact_number" required placeholder="09XX XXX XXXX"
+        <input type="tel" id="contact_number" required inputmode="numeric"
+               pattern="^[0-9 +\-()]{7,20}$" title="Digits, spaces, +, -, ( ) only - no letters"
                value="{{ prefill.contact_number or '' }}" autocomplete="tel" />
+        <small class="help">Numbers only · 7 to 20 digits.</small>
       </div>
       <div class="field">
         <label>Delivery address</label>
-        <textarea id="address" required placeholder="House #, street, barangay, city, province, ZIP"
-                  autocomplete="street-address">{{ prefill.address or '' }}</textarea>
+        <textarea id="address" required autocomplete="street-address">{{ prefill.address or '' }}</textarea>
       </div>
       <div class="field">
         <label>Notes / customization for the studio</label>
-        <textarea id="notes" placeholder="Any special requests, colour preferences, or messages for the team."></textarea>
+        <textarea id="notes"></textarea>
+        <small class="help">Optional · any special requests, colour preferences, or messages.</small>
       </div>
 
       <h3>Payment method</h3>
@@ -58,7 +60,7 @@
       <h3>Order summary</h3>
       <div id="coItems" style="display:flex; flex-direction:column; gap:8px; margin-bottom: 8px;"></div>
       <div class="sum-row"><span>Subtotal</span><span id="sumSubtotal">₱0.00</span></div>
-      <div class="sum-row"><span>Shipping</span><span id="sumShipping">—</span></div>
+      <div class="sum-row"><span>Shipping</span><span id="sumShipping">computed at checkout</span></div>
       <div class="sum-row total"><span>Total</span><span id="sumTotal">₱0.00</span></div>
       <p class="help" style="margin-top: 8px;">🌸 Free shipping on orders over ₱1,500.</p>
     </aside>
@@ -73,6 +75,18 @@
 
   function php(n) { return '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
+  // Phone field: block letters as you type.
+  const phoneInput = document.getElementById('contact_number');
+  if (phoneInput) {
+    phoneInput.addEventListener('keypress', (e) => {
+      if (!/^[0-9 +\-()]$/.test(e.key)) e.preventDefault();
+    });
+    phoneInput.addEventListener('input', () => {
+      const cleaned = phoneInput.value.replace(/[^0-9 +\-()]/g, '');
+      if (cleaned !== phoneInput.value) phoneInput.value = cleaned;
+    });
+  }
+
   function render() {
     const items = cart.items();
     const sub = cart.subtotal();
@@ -81,7 +95,7 @@
       <div class="sum-row"><span>${it.name} × ${it.quantity}</span><span>${php(it.price * it.quantity)}</span></div>
     `).join('');
     document.getElementById('sumSubtotal').textContent = php(sub);
-    document.getElementById('sumShipping').textContent = sub === 0 ? '—' : (shipping === 0 ? 'Free 🌸' : php(shipping));
+    document.getElementById('sumShipping').textContent = sub === 0 ? 'computed at checkout' : (shipping === 0 ? 'Free 🌸' : php(shipping));
     document.getElementById('sumTotal').textContent = php(sub + shipping);
     if (!items.length) window.location.href = "{{ url_for('cart.view') }}";
   }

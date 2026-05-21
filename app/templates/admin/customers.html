@@ -13,7 +13,7 @@
       <tbody>
         {% for c in customers %}
           <tr>
-            <td><b>{{ c.full_name or '—' }}</b></td>
+            <td><b>{{ c.full_name or c.email.split('@')[0] }}</b></td>
             <td>{{ c.email }}</td>
             <td>{% if c.role == 'admin' %}<span class="status shipped">admin</span>{% else %}<span class="status delivered">customer</span>{% endif %}</td>
             <td>{{ c.created_at[:10] }}</td>

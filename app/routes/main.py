@@ -53,6 +53,11 @@ def about():
     return render_template("about.html")
 
 
+@bp.route("/contact")
+def contact():
+    return render_template("contact.html")
+
+
 # ---------------------------------------------------------------------------
 # PSGC address proxy — exposes a slim subset to the browser:
 #   GET /api/ph-address/regions/
