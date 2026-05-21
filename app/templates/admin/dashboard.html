@@ -1,0 +1,77 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Admin · Dashboard — Papier Lab{% endblock %}
+
+{% block admin %}
+<div class="row-between">
+  <div>
+    <h1>Welcome back ✨</h1>
+    <p class="muted">A soft little overview of your studio.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('admin.product_new') }}">+ Add product</a>
+</div>
+
+<div class="metrics" style="margin-top: 20px;">
+  <div class="metric">
+    <div class="lbl">Total orders</div>
+    <div class="val">{{ metrics.total_orders }}</div>
+    <div class="sub">{{ metrics.pending_orders }} pending</div>
+  </div>
+  <div class="metric">
+    <div class="lbl">Revenue (30d)</div>
+    <div class="val">₱{{ "{:,.0f}".format(metrics.revenue_30d) }}</div>
+    <div class="sub">All-time ₱{{ "{:,.0f}".format(metrics.revenue_all) }}</div>
+  </div>
+  <div class="metric">
+    <div class="lbl">Active products</div>
+    <div class="val">{{ metrics.active_products }}</div>
+    <div class="sub">{{ metrics.low_stock }} low stock</div>
+  </div>
+  <div class="metric">
+    <div class="lbl">Customers</div>
+    <div class="val">{{ metrics.customers }}</div>
+    <div class="sub">{{ metrics.open_chats }} active chats</div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <h3>Revenue · last 14 days</h3>
+    <small class="muted">Hover the bars for daily total</small>
+  </div>
+  <div class="bars">
+    {% set max_v = (revenue_series | map(attribute='value') | max) or 1 %}
+    {% for d in revenue_series %}
+      <div style="display:flex; flex-direction:column; align-items:center; flex:1; gap: 4px;">
+        <div class="bar" title="₱{{ '{:,.0f}'.format(d.value) }} on {{ d.day }}" style="width: 100%; height: {{ (d.value / max_v * 100) if max_v else 0 }}%;"></div>
+        <div class="bar-label">{{ d.day }}</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <h3>Recent orders</h3>
+    <a href="{{ url_for('admin.orders') }}" class="btn btn-sm btn-ghost">See all →</a>
+  </div>
+  {% if recent_orders %}
+    <table class="table">
+      <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th><th>Date</th><th></th></tr></thead>
+      <tbody>
+        {% for o in recent_orders %}
+          <tr>
+            <td><code>#{{ o.id[:8] }}</code></td>
+            <td>{{ o.full_name }}</td>
+            <td>₱{{ "%.2f"|format(o.total|float) }}</td>
+            <td><span class="status {{ o.status }}">{{ o.status }}</span></td>
+            <td>{{ o.created_at[:10] }}</td>
+            <td><a class="btn btn-sm btn-secondary" href="{{ url_for('admin.order_detail', order_id=o.id) }}">View →</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty"><h3>No orders yet 🌷</h3><p>Orders will appear here when customers check out.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

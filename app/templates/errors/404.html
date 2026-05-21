@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Lost in the pink — Papier Lab{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container center-text" style="max-width: 520px;">
+    <div style="font-size: 4rem;">🌸</div>
+    <h1>404 — page not found</h1>
+    <p class="muted">Looks like this page wandered off to the craft cabinet. Let's get you back home.</p>
+    <a href="{{ url_for('main.home') }}" class="btn btn-primary">Take me home</a>
+  </div>
+</section>
+{% endblock %}

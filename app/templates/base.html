@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffd2e1" />
+  <title>{% block title %}{{ APP_NAME }} — handmade with love{% endblock %}</title>
+  <meta name="description" content="{{ APP_TAGLINE }}. Handmade bookmarks, keychains, polaroid prints & crafts from Papier Lab." />
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><text y='52' font-size='52'>🌸</text></svg>" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+  {% block layout %}
+  {% include "_navbar.html" %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  {% include "_footer.html" %}
+  {% endblock %}
+
+  <div class="toast-wrap" aria-live="polite"></div>
+
+  <script>
+    window.__PL__ = {
+      SUPABASE_URL: "{{ SUPABASE_URL | e }}",
+      SUPABASE_ANON_KEY: "{{ SUPABASE_ANON_KEY | e }}",
+      CURRENT_USER: {{ (session.get('user') or {}) | tojson }},
+    };
+  </script>
+  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/cart.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/supabase.js') }}"></script>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <script>
+        window.addEventListener('DOMContentLoaded', () => {
+          window.flashServerMessages({{ messages | tojson }});
+        });
+      </script>
+    {% endif %}
+  {% endwith %}
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

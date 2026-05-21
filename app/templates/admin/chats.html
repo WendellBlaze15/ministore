@@ -1,0 +1,26 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Admin · Chats{% endblock %}
+{% block admin %}
+<h1>Chats</h1>
+<p class="muted">Open conversations with customers.</p>
+
+<div class="panel" style="margin-top: 20px;">
+  {% if chats %}
+    <table class="table">
+      <thead><tr><th>Customer</th><th>Email</th><th>Started</th><th></th></tr></thead>
+      <tbody>
+        {% for c in chats %}
+          <tr>
+            <td><b>{{ (c.profiles or {}).full_name or 'Customer' }}</b></td>
+            <td>{{ (c.profiles or {}).email }}</td>
+            <td>{{ c.created_at[:10] }}</td>
+            <td><a class="btn btn-sm btn-primary" href="{{ url_for('chat.admin_room', chat_id=c.id) }}">Open chat →</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty"><h3>No chats yet 🌷</h3><p>Customers can start a chat from their account page.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

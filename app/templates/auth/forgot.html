@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Forgot password — Papier Lab{% endblock %}
+
+{% block layout %}
+{% include "_navbar.html" %}
+<div class="auth-wrap">
+  <aside class="auth-art">
+    <div class="blobs"><span></span><span></span></div>
+    <a href="{{ url_for('main.home') }}" class="brand" style="color: var(--pink-700);">
+      <span class="brand-mark" style="background:white; color: var(--pink-600);">P</span>
+      <span>Papier Lab</span>
+    </a>
+    <div style="z-index:1;">
+      <h2>It happens to all of us ♡</h2>
+      <p class="muted">Pop in your email and we'll send a magic reset link your way.</p>
+    </div>
+    <p class="muted" style="z-index:1;">need help? message us in chat 💌</p>
+  </aside>
+
+  <section class="auth-form-wrap">
+    <div class="auth-form">
+      <span class="tag">reset password</span>
+      <h1>Forgot your password?</h1>
+      <p class="muted">No worries — we'll send a reset link to your email.</p>
+      <form id="forgotForm" style="margin-top: 20px;">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="email" required />
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Send reset link</button>
+      </form>
+      <p class="muted" style="margin-top: 20px;"><a href="{{ url_for('auth.login') }}" style="color: var(--pink-600); font-weight: 600;">← Back to sign in</a></p>
+    </div>
+  </section>
+</div>
+{% include "_footer.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { supabase } from "{{ url_for('static', filename='js/supabase.js') }}";
+  import { toast } from "{{ url_for('static', filename='js/main.js') }}";
+  document.getElementById('forgotForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!supabase) return toast('Supabase not configured', { type: 'error' });
+    const email = document.getElementById('email').value.trim();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/auth/login' });
+    if (error) return toast(error.message, { type: 'error' });
+    toast('Reset link sent! Check your inbox 💌', { type: 'success' });
+  });
+</script>
+{% endblock %}

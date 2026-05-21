@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Create account — Papier Lab{% endblock %}
+
+{% block layout %}
+{% include "_navbar.html" %}
+<div class="auth-wrap">
+  <aside class="auth-art">
+    <div class="blobs"><span></span><span></span></div>
+    <a href="{{ url_for('main.home') }}" class="brand" style="color: var(--pink-700);">
+      <span class="brand-mark" style="background:white; color: var(--pink-600);">P</span>
+      <span>Papier Lab</span>
+    </a>
+    <div style="z-index:1;">
+      <h2>Join the pen pals ♡</h2>
+      <p class="muted" style="max-width: 320px;">
+        Create a free account for faster checkout, order tracking, custom requests, and chat support.
+      </p>
+    </div>
+    <p class="muted" style="z-index:1;">no spam · unsubscribe anytime</p>
+  </aside>
+
+  <section class="auth-form-wrap">
+    <div class="auth-form">
+      <span class="tag">create account</span>
+      <h1>Hi! Let's get to know you 🌸</h1>
+      <p class="muted">Already a pen pal? <a href="{{ url_for('auth.login') }}" style="color: var(--pink-600); font-weight:600;">Sign in →</a></p>
+
+      <form id="registerForm" style="margin-top: 20px;">
+        <div class="field">
+          <label>Full name</label>
+          <input type="text" id="name" required placeholder="Andrea Cruz" />
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="email" required placeholder="hello@papierlab.shop" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="password" minlength="6" required placeholder="At least 6 characters" />
+        </div>
+        <button class="btn btn-primary btn-block" type="submit" style="margin-top: 8px;">Create my account</button>
+      </form>
+
+      <div class="auth-divider">protected by Supabase Auth</div>
+      <p class="muted" style="font-size:.85rem;">By creating an account you agree to our terms & soft pink privacy policy.</p>
+    </div>
+  </section>
+</div>
+{% include "_footer.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { supabase, syncSessionToServer } from "{{ url_for('static', filename='js/supabase.js') }}";
+  import { toast } from "{{ url_for('static', filename='js/main.js') }}";
+
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!supabase) { toast('Supabase not configured.', { type: 'error' }); return; }
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Creating…';
+
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: { data: { full_name: name } },
+    });
+    if (error) {
+      toast(error.message, { type: 'error' });
+      btn.disabled = false; btn.textContent = 'Create my account';
+      return;
+    }
+    if (!data.session) {
+      toast('Check your email to confirm your account 💌', { type: 'info' });
+      btn.disabled = false; btn.textContent = 'Create my account';
+      return;
+    }
+    await syncSessionToServer();
+    toast('Welcome to Papier Lab! 🌸', { type: 'success' });
+    window.location.href = '/';
+  });
+</script>
+{% endblock %}

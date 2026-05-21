@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Checkout — Papier Lab{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="container">
+    <p class="crumbs"><a href="{{ url_for('main.home') }}">Home</a> · <a href="{{ url_for('cart.view') }}">Basket</a> · Checkout</p>
+    <h1>Checkout 💌</h1>
+    <p class="muted">Almost there! Pop in your delivery details below.</p>
+  </div>
+</section>
+
+<section class="section" style="padding-top: 24px;">
+  <div class="container cart-layout">
+    <form id="checkoutForm" class="card-soft" style="padding: 28px;">
+      <h3 style="margin-top: 0;">Delivery details</h3>
+      <div class="field">
+        <label>Full name</label>
+        <input type="text" id="full_name" required value="{{ user.name or '' }}" />
+      </div>
+      <div class="field">
+        <label>Contact number</label>
+        <input type="tel" id="contact_number" required placeholder="09XX XXX XXXX" />
+      </div>
+      <div class="field">
+        <label>Delivery address</label>
+        <textarea id="address" required placeholder="House #, street, barangay, city, province, ZIP"></textarea>
+      </div>
+      <div class="field">
+        <label>Notes / customization for the studio</label>
+        <textarea id="notes" placeholder="Any special requests, colour preferences, or messages for the team."></textarea>
+      </div>
+
+      <h3>Payment method</h3>
+      <div class="pay-options">
+        <label class="pay-option">
+          <input type="radio" name="pay" value="cod" checked />
+          <div>
+            <b>💵 Cash on Delivery</b>
+            <small>Pay when your parcel arrives.</small>
+          </div>
+        </label>
+        <label class="pay-option">
+          <input type="radio" name="pay" value="gcash" />
+          <div>
+            <b>📱 GCash <span class="tag" style="margin-left:6px;">mockup</span></b>
+            <small>We'll send our GCash # in chat after you place the order.</small>
+          </div>
+        </label>
+      </div>
+
+      <button class="btn btn-primary btn-block" type="submit" style="margin-top: 18px;">Place my order ✨</button>
+    </form>
+
+    <aside class="summary">
+      <h3>Order summary</h3>
+      <div id="coItems" style="display:flex; flex-direction:column; gap:8px; margin-bottom: 8px;"></div>
+      <div class="sum-row"><span>Subtotal</span><span id="sumSubtotal">₱0.00</span></div>
+      <div class="sum-row"><span>Shipping</span><span id="sumShipping">—</span></div>
+      <div class="sum-row total"><span>Total</span><span id="sumTotal">₱0.00</span></div>
+      <p class="help" style="margin-top: 8px;">🌸 Free shipping on orders over ₱1,500.</p>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { cart } from "{{ url_for('static', filename='js/cart.js') }}";
+  import { toast } from "{{ url_for('static', filename='js/main.js') }}";
+
+  function php(n) { return '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+  function render() {
+    const items = cart.items();
+    const sub = cart.subtotal();
+    const shipping = sub === 0 ? 0 : (sub >= 1500 ? 0 : 80);
+    document.getElementById('coItems').innerHTML = items.map(it => `
+      <div class="sum-row"><span>${it.name} × ${it.quantity}</span><span>${php(it.price * it.quantity)}</span></div>
+    `).join('');
+    document.getElementById('sumSubtotal').textContent = php(sub);
+    document.getElementById('sumShipping').textContent = sub === 0 ? '—' : (shipping === 0 ? 'Free 🌸' : php(shipping));
+    document.getElementById('sumTotal').textContent = php(sub + shipping);
+    if (!items.length) window.location.href = "{{ url_for('cart.view') }}";
+  }
+  render();
+
+  document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const items = cart.items();
+    if (!items.length) return;
+    const payload = {
+      full_name: document.getElementById('full_name').value,
+      contact_number: document.getElementById('contact_number').value,
+      address: document.getElementById('address').value,
+      notes: document.getElementById('notes').value,
+      payment_method: document.querySelector('input[name=pay]:checked').value,
+      items,
+    };
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Placing your order…';
+
+    const res = await fetch("{{ url_for('cart.place_order') }}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      toast(data.error || 'Could not place order', { type: 'error' });
+      btn.disabled = false; btn.textContent = 'Place my order ✨';
+      return;
+    }
+    cart.clear();
+    toast('Order placed! Sending you to tracking 🎀', { type: 'success' });
+    setTimeout(() => window.location.href = '/orders/' + data.order_id, 800);
+  });
+</script>
+{% endblock %}

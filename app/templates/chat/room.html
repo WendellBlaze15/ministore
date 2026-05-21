@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Chat — Papier Lab{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="chat-shell">
+    <div class="chat-head">
+      <div class="avatar">{{ partner_name[0]|upper }}</div>
+      <div>
+        <h3>{{ partner_name }}</h3>
+        <small class="muted">{% if is_admin_view %}Customer conversation{% else %}Usually replies within a few hours 🌸{% endif %}</small>
+      </div>
+      {% if is_admin_view %}
+      <a class="btn btn-sm btn-secondary" style="margin-left:auto;" href="{{ url_for('admin.chats') }}">← Back to chats</a>
+      {% endif %}
+    </div>
+
+    <div class="chat-body" id="chatBody" role="log" aria-live="polite">
+      <div class="muted center-text" style="margin: auto; padding: 24px;">
+        {% if chat_id %}Say hi! Messages are end-to-end through Supabase Realtime. 🌸
+        {% else %}We couldn't open a chat right now. Please refresh the page.{% endif %}
+      </div>
+    </div>
+
+    <form class="chat-foot" id="chatForm">
+      <input id="chatInput" type="text" placeholder="Write a soft message…" autocomplete="off" maxlength="1500" {{ 'disabled' if not chat_id else '' }} />
+      <button class="btn btn-primary" type="submit" {{ 'disabled' if not chat_id else '' }}>Send</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { supabase } from "{{ url_for('static', filename='js/supabase.js') }}";
+  import { toast } from "{{ url_for('static', filename='js/main.js') }}";
+
+  const chatId  = "{{ chat_id or '' }}";
+  const me      = window.__PL__.CURRENT_USER || {};
+  const isAdmin = me.role === 'admin';
+  const body    = document.getElementById('chatBody');
+  const form    = document.getElementById('chatForm');
+  const input   = document.getElementById('chatInput');
+
+  if (!chatId) {
+    // nothing to render
+  } else if (!supabase) {
+    body.innerHTML = '<div class="muted center-text" style="margin:auto; padding:24px;">Chat unavailable — Supabase env vars missing.</div>';
+  } else {
+    bootstrap();
+  }
+
+  function formatTime(iso) {
+    try {
+      return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch { return ''; }
+  }
+
+  function appendMessage(msg) {
+    const isMine = msg.sender_id === me.id;
+    const div = document.createElement('div');
+    div.className = 'bubble ' + (isMine ? 'me' : 'them');
+    div.dataset.id = msg.id;
+    div.innerHTML = `${escapeHtml(msg.body)}<small>${formatTime(msg.created_at)}${isMine ? ` <span class="seen">${msg.seen ? '✓✓' : '✓'}</span>` : ''}</small>`;
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight;
+  }
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  }
+  function clearPlaceholder() {
+    if (body.firstChild && body.firstChild.classList && body.firstChild.classList.contains('muted')) body.innerHTML = '';
+  }
+
+  async function bootstrap() {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('chat_id', chatId)
+      .order('created_at', { ascending: true })
+      .limit(200);
+    if (error) {
+      toast(error.message, { type: 'error' });
+      return;
+    }
+    if (data && data.length) {
+      clearPlaceholder();
+      data.forEach(appendMessage);
+    }
+    markSeen();
+
+    supabase
+      .channel(`chat-${chatId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}`,
+      }, (payload) => {
+        clearPlaceholder();
+        appendMessage(payload.new);
+        markSeen();
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}`,
+      }, (payload) => {
+        const node = body.querySelector(`[data-id="${payload.new.id}"] .seen`);
+        if (node) node.textContent = payload.new.seen ? '✓✓' : '✓';
+      })
+      .subscribe();
+  }
+
+  function markSeen() {
+    fetch("{{ url_for('chat.mark_seen') }}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId }),
+    });
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body = input.value.trim();
+    if (!body) return;
+    input.value = '';
+    const res = await fetch("{{ url_for('chat.send_message') }}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, body }),
+    });
+    const data = await res.json();
+    if (!data.ok) toast(data.error || 'Could not send', { type: 'error' });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_product_card.html" import product_card %}
+{% block title %}Shop — Papier Lab{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="container">
+    <p class="crumbs"><a href="{{ url_for('main.home') }}">Home</a> · Shop</p>
+    <h1>Browse the studio</h1>
+    <p class="muted">Made-to-order, packed in 2–3 days. Chat with us for custom requests. 💌</p>
+  </div>
+</section>
+
+<section class="section" style="padding-top: 24px;">
+  <div class="container">
+    <form class="shop-toolbar" method="get" action="{{ url_for('products.shop') }}">
+      <input class="search-input" type="search" name="q" value="{{ q }}" placeholder="🔎 Search bookmarks, keychains, polaroids…" />
+
+      <div class="chips">
+        {% for slug, name in categories %}
+          <a class="chip {{ 'active' if active_category == slug else '' }}"
+             href="{{ url_for('products.shop', category=slug, q=q, sort=sort) }}">{{ name }}</a>
+        {% endfor %}
+      </div>
+
+      <select name="sort" class="search-input" style="flex: 0 0 180px; min-width:0;" onchange="this.form.submit()">
+        <option value="new"        {{ 'selected' if sort=='new' else '' }}>Newest</option>
+        <option value="price_asc"  {{ 'selected' if sort=='price_asc' else '' }}>Price: Low → High</option>
+        <option value="price_desc" {{ 'selected' if sort=='price_desc' else '' }}>Price: High → Low</option>
+      </select>
+      <button class="btn btn-primary btn-sm" type="submit">Apply</button>
+    </form>
+
+    {% if products %}
+      <div class="products">
+        {% for p in products %}
+          {{ product_card(p) }}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty">
+        <h3>No products match 🌷</h3>
+        <p>Try a different category or clear the search.</p>
+        <a class="btn btn-secondary" href="{{ url_for('products.shop') }}">Reset filters</a>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<style>[data-reveal] { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease;} [data-reveal].in { opacity: 1; transform: translateY(0);}</style>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="admin-shell">
+  <aside class="admin-side">
+    <div class="who">
+      <small class="muted">signed in as</small>
+      <b>{{ session.user.name or 'Admin' }}</b>
+      <small class="muted">{{ session.user.email }}</small>
+    </div>
+    <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' else '' }}">📊 Dashboard</a>
+    <a href="{{ url_for('admin.products') }}" class="{{ 'active' if request.endpoint and 'product' in request.endpoint else '' }}">🛍️ Products</a>
+    <a href="{{ url_for('admin.orders') }}" class="{{ 'active' if request.endpoint and 'order' in request.endpoint else '' }}">📦 Orders</a>
+    <a href="{{ url_for('admin.customers') }}" class="{{ 'active' if request.endpoint == 'admin.customers' else '' }}">💌 Customers</a>
+    <a href="{{ url_for('admin.chats') }}" class="{{ 'active' if request.endpoint and 'chat' in request.endpoint else '' }}">💬 Chats</a>
+    <div style="margin-top: auto; padding-top: 24px;">
+      <a href="{{ url_for('main.home') }}">← Back to shop</a>
+      <a href="{{ url_for('auth.logout') }}">Sign out</a>
+    </div>
+  </aside>
+  <main class="admin-main">
+    {% block admin %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}About — Papier Lab{% endblock %}
+{% block content %}
+<section class="hero" style="padding-bottom: 24px;">
+  <div class="container">
+    <span class="tag" data-reveal>our story</span>
+    <h1 style="margin-top: 10px; max-width: 720px;" data-reveal>A small studio making paper goods with a whole lot of love.</h1>
+    <p class="muted" style="max-width: 580px;" data-reveal>
+      Papier Lab is a tiny Filipino studio that handcrafts bookmarks, keychains, polaroid prints and crafts.
+      We believe small things — a soft pink bow, a hand-written note — can make ordinary days a little cuter.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container story-grid">
+    <div class="polaroid-stack" data-reveal>
+      <figure class="polaroid p1"><img src="https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=700&q=70" alt="" /><figcaption>making bows</figcaption></figure>
+      <figure class="polaroid p2"><img src="https://images.unsplash.com/photo-1466637574441-749b8f19452f?auto=format&fit=crop&w=700&q=70" alt="" /><figcaption>cute corner</figcaption></figure>
+      <figure class="polaroid p3"><img src="https://images.unsplash.com/photo-1601758123927-196d5d042e0b?auto=format&fit=crop&w=700&q=70" alt="" /><figcaption>fresh bookmarks</figcaption></figure>
+    </div>
+    <div data-reveal>
+      <h2>Made for readers, dreamers & gift-givers.</h2>
+      <p>Every order is made-to-order in our tiny home studio. We source pastel paper, acrylic charms, and matte film, then hand-cut, laminate, and finish each piece with a bow before packing.</p>
+      <p>If you have an idea, just message us in chat. We absolutely love custom orders — names, dates, favourite quotes, polaroid sets of your loved ones, you name it.</p>
+      <a href="{{ url_for('products.shop') }}" class="btn btn-primary">Start shopping</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<style>[data-reveal] { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease;} [data-reveal].in { opacity: 1; transform: translateY(0);}</style>
+{% endblock %}

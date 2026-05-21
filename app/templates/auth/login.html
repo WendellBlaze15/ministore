@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Sign in — Papier Lab{% endblock %}
+
+{% block layout %}
+{% include "_navbar.html" %}
+<div class="auth-wrap">
+  <aside class="auth-art">
+    <div class="blobs"><span></span><span></span></div>
+    <a href="{{ url_for('main.home') }}" class="brand" style="color: white;">
+      <span class="brand-mark" style="background:white; color: var(--pink-600);">P</span>
+      <span style="color: var(--pink-700);">Papier Lab</span>
+    </a>
+    <div style="z-index:1;">
+      <h2>Welcome back, friend ♡</h2>
+      <p class="muted" style="max-width: 320px;">
+        Sign in to track orders, pick up where you left off in chat, and breeze through checkout.
+      </p>
+    </div>
+    <p class="muted" style="z-index:1;">🌸 made with love · est. 2024</p>
+  </aside>
+
+  <section class="auth-form-wrap">
+    <div class="auth-form">
+      <span class="tag">sign in</span>
+      <h1>Pen pals welcome back ✨</h1>
+      <p class="muted">New here? <a href="{{ url_for('auth.register') }}" style="color: var(--pink-600); font-weight:600;">Create an account →</a></p>
+
+      <form id="loginForm" style="margin-top: 20px;">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" autocomplete="email" required placeholder="hello@papierlab.shop" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" autocomplete="current-password" required placeholder="••••••••" />
+        </div>
+        <div class="help-row">
+          <label style="display:flex; gap:6px; align-items:center;">
+            <input type="checkbox" /> Remember me
+          </label>
+          <a href="{{ url_for('auth.forgot') }}" style="color: var(--pink-600);">Forgot password?</a>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit" style="margin-top: 16px;">Sign in</button>
+      </form>
+
+      <div class="auth-divider">protected by Supabase Auth</div>
+      <p class="muted" style="font-size:.85rem;">By signing in you agree to our cute little terms ♡</p>
+    </div>
+  </section>
+</div>
+{% include "_footer.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { supabase, syncSessionToServer } from "{{ url_for('static', filename='js/supabase.js') }}";
+  import { toast } from "{{ url_for('static', filename='js/main.js') }}";
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!supabase) { toast('Supabase not configured. Check your env vars.', { type: 'error' }); return; }
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Signing in…';
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      toast(error.message, { type: 'error' });
+      btn.disabled = false; btn.textContent = 'Sign in';
+      return;
+    }
+    await syncSessionToServer();
+    toast('Welcome back! 🌸', { type: 'success' });
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = params.get('next') || '/';
+  });
+</script>
+{% endblock %}

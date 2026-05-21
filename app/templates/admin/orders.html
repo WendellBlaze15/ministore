@@ -1,0 +1,38 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Admin · Orders{% endblock %}
+
+{% block admin %}
+<h1>Orders</h1>
+<p class="muted">Manage status and customer details.</p>
+
+<div class="chips" style="margin: 20px 0;">
+  <a class="chip {{ 'active' if status == 'all' else '' }}" href="{{ url_for('admin.orders', status='all') }}">All</a>
+  {% for s in statuses %}
+    <a class="chip {{ 'active' if status == s else '' }}" href="{{ url_for('admin.orders', status=s) }}">{{ s|capitalize }}</a>
+  {% endfor %}
+</div>
+
+<div class="panel">
+{% if orders %}
+  <table class="table">
+    <thead><tr><th>Order</th><th>Customer</th><th>Contact</th><th>Payment</th><th>Total</th><th>Status</th><th>Date</th><th></th></tr></thead>
+    <tbody>
+    {% for o in orders %}
+      <tr>
+        <td><code>#{{ o.id[:8] }}</code></td>
+        <td>{{ o.full_name }}</td>
+        <td>{{ o.contact_number }}</td>
+        <td>{{ o.payment_method|upper }}</td>
+        <td>₱{{ "%.2f"|format(o.total|float) }}</td>
+        <td><span class="status {{ o.status }}">{{ o.status }}</span></td>
+        <td>{{ o.created_at[:10] }}</td>
+        <td><a class="btn btn-sm btn-secondary" href="{{ url_for('admin.order_detail', order_id=o.id) }}">Open →</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <div class="empty"><h3>No orders here 🌷</h3></div>
+{% endif %}
+</div>
+{% endblock %}

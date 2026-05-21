@@ -1,0 +1,74 @@
+{% extends "admin/_layout.html" %}
+{% block title %}{{ 'Edit' if product else 'New' }} product · Admin{% endblock %}
+
+{% block admin %}
+<p class="crumbs"><a href="{{ url_for('admin.products') }}">← Products</a></p>
+<h1>{{ 'Edit product' if product else 'Add a new product' }}</h1>
+<p class="muted">All fields are easy-to-use. Upload a square image for best results.</p>
+
+<form method="post" enctype="multipart/form-data" class="card-soft" style="padding: 28px; margin-top: 20px;">
+  <div class="cart-layout">
+    <div>
+      <div class="field">
+        <label>Product name</label>
+        <input type="text" name="name" required value="{{ product.name if product else '' }}" />
+      </div>
+      <div class="field">
+        <label>Slug <small class="help">(URL — leave blank to auto-generate)</small></label>
+        <input type="text" name="slug" value="{{ product.slug if product else '' }}" placeholder="strawberry-milk-bookmark" />
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea name="description" rows="5">{{ product.description if product else '' }}</textarea>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="field">
+          <label>Price (₱)</label>
+          <input type="number" name="price" step="0.01" min="0" required value="{{ product.price if product else '' }}" />
+        </div>
+        <div class="field">
+          <label>Stock</label>
+          <input type="number" name="stock" min="0" required value="{{ product.stock if product else 10 }}" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <select name="category" required>
+          {% for c in categories %}
+            <option value="{{ c }}" {{ 'selected' if product and product.category == c else '' }}>{{ c|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <label class="pay-option">
+        <input type="checkbox" name="customizable" {{ 'checked' if not product or product.customizable else '' }} />
+        <div><b>Allow customization requests</b><small>Show a note field on the product page.</small></div>
+      </label>
+      <label class="pay-option" style="margin-top: 8px;">
+        <input type="checkbox" name="is_active" {{ 'checked' if not product or product.is_active else '' }} />
+        <div><b>Active</b><small>Visible in the shop.</small></div>
+      </label>
+      <label class="pay-option" style="margin-top: 8px;">
+        <input type="checkbox" name="is_featured" {{ 'checked' if product and product.is_featured else '' }} />
+        <div><b>Featured</b><small>Show prominently on the homepage.</small></div>
+      </label>
+    </div>
+
+    <aside>
+      <div class="field">
+        <label>Cover image</label>
+        {% if product and product.cover_image %}
+          <img src="{{ product.cover_image }}" alt="" style="width:100%; aspect-ratio:1/1; object-fit:cover; border-radius: 16px; margin-bottom: 8px;" />
+        {% endif %}
+        <input type="file" name="image_file" accept="image/*" />
+        <small class="help">Or paste an image URL below.</small>
+      </div>
+      <div class="field">
+        <label>Cover image URL</label>
+        <input type="url" name="cover_image" value="{{ product.cover_image if product else '' }}" placeholder="https://…" />
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" style="margin-top: 8px;">{{ 'Save changes' if product else 'Create product' }}</button>
+      <a class="btn btn-ghost btn-block" style="margin-top: 8px;" href="{{ url_for('admin.products') }}">Cancel</a>
+    </aside>
+  </div>
+</form>
+{% endblock %}

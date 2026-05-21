@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "_product_card.html" import product_card %}
+{% block title %}{{ product.name }} — Papier Lab{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="container">
+    <p class="crumbs">
+      <a href="{{ url_for('main.home') }}">Home</a> ·
+      <a href="{{ url_for('products.shop') }}">Shop</a> ·
+      <a href="{{ url_for('products.shop', category=product.category) }}">{{ product.category|capitalize }}</a>
+    </p>
+  </div>
+</section>
+
+<section class="section" style="padding-top: 24px;">
+  <div class="container pdp">
+    <div class="pdp-gallery">
+      <div class="pdp-hero">
+        <img id="pdpHero" src="{{ images[0].url if images else product.cover_image }}" alt="{{ product.name }}" />
+      </div>
+      {% if images|length > 1 %}
+      <div class="thumbs">
+        {% for img in images %}
+          <button type="button" class="{{ 'active' if loop.first else '' }}" onclick="document.getElementById('pdpHero').src='{{ img.url }}'; this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
+            <img src="{{ img.url }}" alt="" />
+          </button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="pdp-info">
+      <span class="tag">{{ product.category|capitalize }}</span>
+      <h1>{{ product.name }}</h1>
+      <div class="pdp-price">₱{{ "%.2f"|format(product.price|float) }}</div>
+      <div class="pdp-meta">
+        <span>📦 {{ product.stock }} in stock</span>
+        {% if product.customizable %}<span>🎨 Custom requests welcome</span>{% endif %}
+        <span>🚚 Free shipping on ₱1,500+</span>
+      </div>
+      <p>{{ product.description or "A tiny handmade treasure from our studio." }}</p>
+
+      {% if product.customizable %}
+      <div class="field">
+        <label for="customNote">Customization note (optional)</label>
+        <textarea id="customNote" placeholder="A name, a colour preference, a photo file name… anything!"></textarea>
+        <small class="help">For polaroid prints, please email your photos after checkout. We'll confirm in chat too.</small>
+      </div>
+      {% endif %}
+
+      <div class="pdp-actions">
+        <div class="qty">
+          <button id="qtyMinus">−</button>
+          <span id="qtyVal">1</span>
+          <button id="qtyPlus">+</button>
+        </div>
+        <button class="btn btn-primary" id="pdpAdd">Add to basket 🛍️</button>
+        <button class="btn btn-secondary" id="pdpBuy">Buy now</button>
+      </div>
+
+      <div class="divider"></div>
+      <details>
+        <summary style="cursor:pointer; font-weight:600;">🌸 Shipping & care</summary>
+        <p class="muted" style="margin-top: 8px;">Packed in 2–3 days. Ships nationwide via J&T or LBC. Bookmarks are laminated; keep keychains away from harsh sunlight to keep colours vivid.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+{% if related %}
+<section class="section" style="padding-top: 0;">
+  <div class="container">
+    <h2>You might also love</h2>
+    <div class="products">
+      {% for r in related %}{{ product_card(r) }}{% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  import { cart } from "{{ url_for('static', filename='js/cart.js') }}";
+  const qtyVal = document.getElementById('qtyVal');
+  document.getElementById('qtyMinus').onclick = () => qtyVal.textContent = Math.max(1, parseInt(qtyVal.textContent) - 1);
+  document.getElementById('qtyPlus').onclick  = () => qtyVal.textContent = parseInt(qtyVal.textContent) + 1;
+  const note = document.getElementById('customNote');
+  function addToCart() {
+    const qty = parseInt(qtyVal.textContent) || 1;
+    cart.add({
+      id: "{{ product.id }}",
+      name: "{{ product.name|e }}",
+      slug: "{{ product.slug }}",
+      price: {{ product.price|float }},
+      cover_image: "{{ (images[0].url if images else product.cover_image)|e }}",
+    }, qty, note ? note.value : '');
+  }
+  document.getElementById('pdpAdd').onclick = addToCart;
+  document.getElementById('pdpBuy').onclick = () => { addToCart(); window.location.href = "{{ url_for('cart.view') }}"; };
+</script>
+{% endblock %}

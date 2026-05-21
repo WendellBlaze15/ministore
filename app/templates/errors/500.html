@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Something broke — Papier Lab{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container center-text" style="max-width: 520px;">
+    <div style="font-size: 4rem;">💔</div>
+    <h1>Oh no — something broke</h1>
+    <p class="muted">Our craft knife slipped. Please try again in a moment, or send us a message in chat if it keeps happening.</p>
+    <a href="{{ url_for('main.home') }}" class="btn btn-primary">Back to safety</a>
+  </div>
+</section>
+{% endblock %}

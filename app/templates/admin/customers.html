@@ -1,0 +1,25 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Admin · Customers{% endblock %}
+{% block admin %}
+<h1>Customers</h1>
+<p class="muted">Everyone who has registered with Papier Lab.</p>
+<div class="panel" style="margin-top: 20px;">
+  {% if customers %}
+    <table class="table">
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
+      <tbody>
+        {% for c in customers %}
+          <tr>
+            <td><b>{{ c.full_name or '—' }}</b></td>
+            <td>{{ c.email }}</td>
+            <td>{% if c.role == 'admin' %}<span class="status shipped">admin</span>{% else %}<span class="status delivered">customer</span>{% endif %}</td>
+            <td>{{ c.created_at[:10] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty"><h3>No customers yet 🌷</h3></div>
+  {% endif %}
+</div>
+{% endblock %}
