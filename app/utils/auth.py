@@ -64,6 +64,7 @@ def store_user_in_session(user_obj: dict, access_token: str, refresh_token: str)
         admin_email = (current_app.config.get("ADMIN_EMAIL") or "").lower()
         role = "admin" if admin_email and email.lower() == admin_email else "customer"
 
+    session.permanent = True
     session["user"] = {
         "id": user_obj.get("id"),
         "email": email,

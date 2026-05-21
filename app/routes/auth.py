@@ -2,7 +2,11 @@
 
 The browser handles the actual Supabase sign-in via the JS SDK (so realtime &
 RLS work seamlessly). After a successful sign-in, JS POSTs the session tokens
-to ``/auth/session`` so the Flask backend also knows who the user is.
+to ``/auth/session``.
+
+⚠️ Security: we never trust the ``user`` field from the browser. We always
+re-verify the access token with Supabase before storing anything in the Flask
+session cookie. Otherwise an attacker could POST a fake user payload.
 """
 from __future__ import annotations
 
@@ -14,6 +18,8 @@ from app.utils.auth import (
     ensure_profile_row,
     current_user,
 )
+from app.services.supabase_client import get_anon_client
+from app.utils.security import require_same_origin
 
 bp = Blueprint("auth", __name__)
 
@@ -38,17 +44,40 @@ def forgot():
 
 
 @bp.route("/session", methods=["POST"])
+@require_same_origin
 def create_session():
-    """Receive Supabase tokens from the browser and store them in the cookie."""
+    """Verify the Supabase access token, then store the user in our session.
+
+    The token verification ensures the request can't be forged with a fake
+    user payload — we always go back to Supabase to ask "who is this token?".
+    """
     data = request.get_json(silent=True) or {}
-    user = data.get("user")
-    access_token = data.get("access_token")
-    refresh_token = data.get("refresh_token", "")
+    access_token = (data.get("access_token") or "").strip()
+    refresh_token = (data.get("refresh_token") or "").strip()
 
-    if not user or not access_token:
-        return jsonify({"ok": False, "error": "Missing user or access_token"}), 400
+    if not access_token:
+        return jsonify({"ok": False, "error": "Missing access_token"}), 400
 
-    store_user_in_session(user, access_token, refresh_token)
+    supa = get_anon_client()
+    if supa is None:
+        return jsonify({"ok": False, "error": "Server is not configured for Supabase yet."}), 500
+
+    try:
+        user_resp = supa.auth.get_user(access_token)
+    except Exception as exc:
+        current_app.logger.warning("get_user failed: %s", exc)
+        return jsonify({"ok": False, "error": "Invalid or expired session."}), 401
+
+    user = getattr(user_resp, "user", None)
+    if not user or not getattr(user, "id", None):
+        return jsonify({"ok": False, "error": "Invalid session."}), 401
+
+    verified_user = {
+        "id": user.id,
+        "email": user.email,
+        "user_metadata": getattr(user, "user_metadata", None) or {},
+    }
+    store_user_in_session(verified_user, access_token, refresh_token)
 
     sess_user = current_user() or {}
     ensure_profile_row(

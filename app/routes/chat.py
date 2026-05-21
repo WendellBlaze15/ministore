@@ -2,6 +2,7 @@
 from flask import Blueprint, render_template, jsonify, request
 
 from app.utils.auth import login_required, current_user, is_admin
+from app.utils.security import require_same_origin
 from app.services.supabase_client import get_service_client
 
 bp = Blueprint("chat", __name__)
@@ -70,6 +71,7 @@ def admin_room(chat_id: str):
 
 @bp.route("/send", methods=["POST"])
 @login_required
+@require_same_origin
 def send_message():
     user = current_user()
     data = request.get_json(silent=True) or {}
@@ -101,6 +103,7 @@ def send_message():
 
 @bp.route("/seen", methods=["POST"])
 @login_required
+@require_same_origin
 def mark_seen():
     data = request.get_json(silent=True) or {}
     chat_id = (data.get("chat_id") or "").strip()

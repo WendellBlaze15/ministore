@@ -11,6 +11,7 @@ responsible for keeping the cart up to date.
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
 
 from app.utils.auth import login_required, current_user
+from app.utils.security import require_same_origin
 from app.services.supabase_client import get_service_client, get_anon_client
 
 bp = Blueprint("cart", __name__)
@@ -30,6 +31,7 @@ def checkout():
 
 @bp.route("/checkout", methods=["POST"])
 @login_required
+@require_same_origin
 def place_order():
     """Create an order from the posted cart payload."""
     user = current_user()

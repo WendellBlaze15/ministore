@@ -9,6 +9,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 
 from app.utils.auth import admin_required, current_user
 from app.utils.helpers import slugify, allowed_image, safe_filename
+from app.utils.security import require_same_origin
 from app.services.supabase_client import get_service_client
 
 bp = Blueprint("admin", __name__)
@@ -141,6 +142,7 @@ def products():
 
 @bp.route("/products/new", methods=["GET", "POST"])
 @admin_required
+@require_same_origin
 def product_new():
     if request.method == "POST":
         return _save_product(None)
@@ -149,6 +151,7 @@ def product_new():
 
 @bp.route("/products/<product_id>/edit", methods=["GET", "POST"])
 @admin_required
+@require_same_origin
 def product_edit(product_id):
     svc = get_service_client()
     if request.method == "POST":
@@ -170,6 +173,7 @@ def product_edit(product_id):
 
 @bp.route("/products/<product_id>/delete", methods=["POST"])
 @admin_required
+@require_same_origin
 def product_delete(product_id):
     svc = get_service_client()
     if svc:
@@ -179,6 +183,18 @@ def product_delete(product_id):
         except Exception as exc:
             flash(f"Could not delete: {exc}", "error")
     return redirect(url_for("admin.products"))
+
+
+def _ensure_bucket(svc, bucket: str) -> None:
+    """Create the product images bucket on first use (idempotent)."""
+    try:
+        buckets = svc.storage.list_buckets() or []
+        names = {getattr(b, "name", None) or (b.get("name") if isinstance(b, dict) else None) for b in buckets}
+        if bucket in names:
+            return
+        svc.storage.create_bucket(bucket, options={"public": True})
+    except Exception:  # pragma: no cover — best effort
+        pass
 
 
 def _save_product(product_id):
@@ -211,6 +227,7 @@ def _save_product(product_id):
         bucket = current_app.config.get("SUPABASE_STORAGE_BUCKET", "product-images")
         path = safe_filename(file.filename)
         try:
+            _ensure_bucket(svc, bucket)
             data_bytes = file.read()
             svc.storage.from_(bucket).upload(
                 path=path,
@@ -293,6 +310,7 @@ def order_detail(order_id):
 
 @bp.route("/orders/<order_id>/status", methods=["POST"])
 @admin_required
+@require_same_origin
 def order_set_status(order_id):
     status = (request.form.get("status") or "").strip()
     if status not in ORDER_STATUSES:
