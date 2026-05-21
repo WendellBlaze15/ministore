@@ -9,7 +9,22 @@
 </header>
 
 <section class="acct-section" data-reveal>
-  <form method="post" action="{{ url_for('account.profile_save') }}" class="acct-form">
+  <form method="post" action="{{ url_for('account.profile_save') }}" class="acct-form" enctype="multipart/form-data">
+    <div class="avatar-edit">
+      <div class="avatar-edit-preview">
+        {% if profile.avatar_url or session.user.avatar_url %}
+          <img id="avatarPreview" src="{{ profile.avatar_url or session.user.avatar_url }}" alt="Your avatar" />
+        {% else %}
+          <span id="avatarLetter" class="avatar-letter">{{ (session.user.name or session.user.email or 'F')[:1] | upper }}</span>
+        {% endif %}
+      </div>
+      <div>
+        <label for="avatarInput" class="btn btn-secondary btn-sm" style="margin: 0;">📷 Change picture</label>
+        <input type="file" id="avatarInput" name="avatar" accept="image/png,image/jpeg,image/webp" hidden />
+        <small class="help" style="display:block; margin-top: 6px;">JPG, PNG or WebP. Square images look best.</small>
+      </div>
+    </div>
+
     <div class="field">
       <label>Full name</label>
       <input type="text" name="full_name" value="{{ profile.full_name or '' }}" autocomplete="name" />
@@ -51,14 +66,30 @@
 <script>
   (function () {
     const phone = document.getElementById('profileContact');
-    if (!phone) return;
-    phone.addEventListener('keypress', (e) => {
-      if (!/^[0-9 +\-()]$/.test(e.key)) e.preventDefault();
-    });
-    phone.addEventListener('input', () => {
-      const c = phone.value.replace(/[^0-9 +\-()]/g, '');
-      if (c !== phone.value) phone.value = c;
-    });
+    if (phone) {
+      phone.addEventListener('keypress', (e) => {
+        if (!/^[0-9 +\-()]$/.test(e.key)) e.preventDefault();
+      });
+      phone.addEventListener('input', () => {
+        const c = phone.value.replace(/[^0-9 +\-()]/g, '');
+        if (c !== phone.value) phone.value = c;
+      });
+    }
+    // Live avatar preview before upload.
+    const input = document.getElementById('avatarInput');
+    if (input) {
+      input.addEventListener('change', () => {
+        const f = input.files && input.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const wrap = document.querySelector('.avatar-edit-preview');
+          if (!wrap) return;
+          wrap.innerHTML = '<img id="avatarPreview" src="' + ev.target.result + '" alt="Avatar preview" />';
+        };
+        reader.readAsDataURL(f);
+      });
+    }
   })();
 </script>
 {% endblock %}

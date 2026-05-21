@@ -59,7 +59,11 @@
       <tr data-row>
         <td>
           <div style="display:flex; align-items:center; gap:10px;">
-            <div class="avatar" style="background: var(--pink-100); color: var(--pink-700);">{{ (u.full_name or u.email)[:1] | upper }}</div>
+            {% if u.avatar_url %}
+              <img src="{{ u.avatar_url }}" alt="" class="avatar" style="object-fit:cover;" />
+            {% else %}
+              <div class="avatar" style="background: var(--pink-100); color: var(--pink-700);">{{ (u.full_name or u.email)[:1] | upper }}</div>
+            {% endif %}
             <div>
               <b data-search>{{ u.full_name or u.email.split('@')[0] }}</b>
               <small class="muted" data-search style="display:block;">{{ u.email }}</small>
@@ -82,12 +86,7 @@
         <td>₱{{ '{:,.2f}'.format(u.spend) }}</td>
         <td>
           <div class="action-buttons">
-            <form method="post" action="{{ url_for('admin.user_set_role', user_id=u.id) }}" style="display:inline;">
-              <input type="hidden" name="role" value="{{ 'customer' if u.role == 'admin' else 'admin' }}" />
-              <button class="btn btn-sm btn-ghost" type="submit" title="Toggle role">
-                {{ '↓ Make customer' if u.role == 'admin' else '↑ Make admin' }}
-              </button>
-            </form>
+            <a class="btn btn-sm btn-primary" href="{{ url_for('admin.user_view', user_id=u.id) }}" title="View full profile">👀 View</a>
             {% if not u.email_confirmed %}
             <form method="post" action="{{ url_for('admin.user_force_verify', user_id=u.id) }}" style="display:inline;">
               <button class="btn btn-sm btn-secondary" type="submit" title="Mark email as verified">✔ Verify</button>

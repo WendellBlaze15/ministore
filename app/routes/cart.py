@@ -8,7 +8,7 @@ The cart is intentionally simple:
 The Flask side mostly renders the cart and checkout pages; the JS layer is
 responsible for keeping the cart up to date.
 """
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
 
 from app.utils.auth import login_required, current_user
 from app.utils.security import require_same_origin
@@ -140,5 +140,24 @@ def place_order():
         ).execute()
     except Exception as exc:
         return jsonify({"ok": False, "error": f"Could not save items: {exc}"}), 500
+
+    # Decrement stock for every ordered item so out-of-stock detection
+    # actually kicks in for the next buyer. Best-effort: if Supabase fails
+    # we don't want to block the order — admins can fix counts manually.
+    for it in clean_items:
+        pid = it["product_id"]
+        prod = prod_map.get(pid) or {}
+        cur_stock = prod.get("stock")
+        if cur_stock is None:
+            continue
+        new_stock = max(0, int(cur_stock) - int(it["quantity"]))
+        try:
+            svc.table("products").update({"stock": new_stock}).eq("id", pid).execute()
+            # Auto-deactivate listings that sold out so they vanish from
+            # featured / category grids but remain visible on direct links
+            # (the detail page shows a "sold out" banner instead).
+            # We keep is_active = True so admins control visibility.
+        except Exception as exc:
+            current_app.logger.warning("stock decrement failed for %s: %s", pid, exc)
 
     return jsonify({"ok": True, "order_id": order["id"]})

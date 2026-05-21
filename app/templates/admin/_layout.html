@@ -3,10 +3,17 @@
 {% block content %}
 <div class="admin-shell">
   <aside class="admin-side">
-    <div class="who">
-      <small class="muted">signed in as</small>
-      <b>{{ session.user.name or 'Admin' }}</b>
-      <small class="muted">{{ session.user.email }}</small>
+    <div class="who" style="display:flex; gap:12px; align-items:center;">
+      {% if session.user.avatar_url %}
+        <img src="{{ session.user.avatar_url }}" alt="" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid #fff; box-shadow:0 4px 10px rgba(196,54,109,.2);" />
+      {% else %}
+        <div class="avatar" style="background: var(--pink-200); color: var(--pink-700);">{{ (session.user.name or 'A')[:1] | upper }}</div>
+      {% endif %}
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <small class="muted">signed in as</small>
+        <b>{{ session.user.name or 'Admin' }}</b>
+        <small class="muted">{{ session.user.email }}</small>
+      </div>
     </div>
     <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' else '' }}">📊 Dashboard</a>
     <a href="{{ url_for('admin.products') }}" class="{{ 'active' if request.endpoint and 'product' in request.endpoint else '' }}">🛍️ Products</a>

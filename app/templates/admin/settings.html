@@ -4,12 +4,27 @@
 <header data-reveal>
   <span class="tag">settings</span>
   <h1 style="margin: 6px 0 4px;">Studio settings ⚙️</h1>
-  <p class="muted">Update your admin contact info and storefront details.</p>
+  <p class="muted">Update your admin profile picture, contact info, and password.</p>
 </header>
 
 <section class="panel" data-reveal>
   <h3>Admin profile</h3>
-  <form method="post" action="{{ url_for('admin.settings') }}" class="acct-form">
+  <form method="post" action="{{ url_for('admin.settings') }}" class="acct-form" enctype="multipart/form-data">
+    <div class="avatar-edit">
+      <div class="avatar-edit-preview">
+        {% if profile.avatar_url or session.user.avatar_url %}
+          <img id="avatarPreview" src="{{ profile.avatar_url or session.user.avatar_url }}" alt="Admin avatar" />
+        {% else %}
+          <span class="avatar-letter">{{ (session.user.name or 'A')[:1] | upper }}</span>
+        {% endif %}
+      </div>
+      <div>
+        <label for="adminAvatar" class="btn btn-secondary btn-sm" style="margin: 0;">📷 Change picture</label>
+        <input type="file" id="adminAvatar" name="avatar" accept="image/png,image/jpeg,image/webp" hidden />
+        <small class="help" style="display:block; margin-top: 6px;">JPG, PNG or WebP. Square images look best.</small>
+      </div>
+    </div>
+
     <div class="field">
       <label>Display name</label>
       <input type="text" name="full_name" value="{{ profile.full_name or session.user.name }}" />
@@ -24,43 +39,49 @@
     <div class="field">
       <label>Email</label>
       <input type="email" value="{{ session.user.email }}" disabled />
-      <small class="help">Admin email is locked. To change it, ping Supabase directly.</small>
+      <small class="help">Admin email is locked.</small>
     </div>
     <button class="btn btn-primary" type="submit">Save settings</button>
   </form>
 </section>
 
 <section class="panel" data-reveal>
-  <h3>Storefront</h3>
-  <ul class="dotted">
-    <li><b>Site name</b><span class="muted">{{ APP_NAME }}</span></li>
-    <li><b>Tagline</b><span class="muted">{{ APP_TAGLINE }}</span></li>
-    <li><b>Supabase project</b><span class="muted">{{ SUPABASE_URL.split('//')[1].split('.')[0] if SUPABASE_URL else 'not set' }}</span></li>
-    <li><b>Storage bucket</b><span class="muted">product-images</span></li>
-  </ul>
-  <p class="muted" style="margin-top: 14px;">To edit branding, update <code>app/templates</code> and the logo at <code>app/static/img/logo.png</code>.</p>
+  <h3>🔐 Reset password</h3>
+  <p class="muted" style="margin: 6px 0 14px;">
+    We'll email a 6-digit verification code to <b>{{ session.user.email }}</b>.
+    Use it on the next screen to set a new password.
+  </p>
+  <form method="post" action="{{ url_for('admin.settings_password_otp') }}">
+    <button class="btn btn-primary" type="submit">📨 Send me a reset code</button>
+  </form>
 </section>
 
-<section class="panel" data-reveal>
-  <h3>Security</h3>
-  <ul class="dotted">
-    <li><b>Password reset OTP</b><span class="muted">enabled · 6-digit hashed code via Gmail SMTP</span></li>
-    <li><b>Sessions</b><span class="muted">HttpOnly · SameSite=Lax · Secure in production</span></li>
-    <li><b>CSRF</b><span class="muted">same-origin guard on state-changing endpoints</span></li>
-    <li><b>RLS</b><span class="muted">enabled on profiles, orders, chats, messages, wishlists</span></li>
-  </ul>
-</section>
 <script>
   (function () {
     const phone = document.getElementById('adminContact');
-    if (!phone) return;
-    phone.addEventListener('keypress', (e) => {
-      if (!/^[0-9 +\-()]$/.test(e.key)) e.preventDefault();
-    });
-    phone.addEventListener('input', () => {
-      const c = phone.value.replace(/[^0-9 +\-()]/g, '');
-      if (c !== phone.value) phone.value = c;
-    });
+    if (phone) {
+      phone.addEventListener('keypress', (e) => {
+        if (!/^[0-9 +\-()]$/.test(e.key)) e.preventDefault();
+      });
+      phone.addEventListener('input', () => {
+        const c = phone.value.replace(/[^0-9 +\-()]/g, '');
+        if (c !== phone.value) phone.value = c;
+      });
+    }
+    const input = document.getElementById('adminAvatar');
+    if (input) {
+      input.addEventListener('change', () => {
+        const f = input.files && input.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const wrap = document.querySelector('.avatar-edit-preview');
+          if (!wrap) return;
+          wrap.innerHTML = '<img id="avatarPreview" src="' + ev.target.result + '" alt="Admin avatar" />';
+        };
+        reader.readAsDataURL(f);
+      });
+    }
   })();
 </script>
 {% endblock %}

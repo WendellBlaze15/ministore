@@ -5,7 +5,11 @@
   <div class="acct-shell">
     <aside class="acct-side" data-reveal>
       <div class="acct-who">
-        <div class="avatar avatar-lg">{{ (session.user.name or session.user.email or 'F')[:1] | upper }}</div>
+        {% if session.user.avatar_url %}
+          <img src="{{ session.user.avatar_url }}" alt="" class="avatar avatar-lg" style="object-fit:cover;" />
+        {% else %}
+          <div class="avatar avatar-lg">{{ (session.user.name or session.user.email or 'F')[:1] | upper }}</div>
+        {% endif %}
         <div>
           <b>{{ session.user.name or 'Friend' }}</b>
           <small class="muted">{{ session.user.email }}</small>

@@ -1,8 +1,20 @@
 // LocalStorage cart with simple pub/sub. Used by every page so adding to cart
 // from the home page reflects in the navbar pill and on the cart page.
+//
+// CART ISOLATION
+// ===============
+// Carts are scoped per user-id so:
+//   • signing out wipes the in-memory cart for the next visitor on this
+//     device (the persisted blob is keyed under the previous user's id),
+//   • two different buyers signing in on the same machine each see only
+//     their own cart,
+//   • guests share a single guest cart (cleared on register/login).
+//
+// We also track the "active owner" in OWNER_KEY so the first page after
+// login can detect an identity change and discard any leftover guest cart.
 import { toast } from './main.js';
 
-const STORAGE_KEY = 'pl-cart';
+const OWNER_KEY = 'pl-cart-owner';
 const listeners = new Set();
 
 // Set by base.html from session — when null, the visitor is a guest and
@@ -11,12 +23,38 @@ function currentUser() {
   return (window.__PL__ && window.__PL__.CURRENT_USER) || null;
 }
 
+function ownerId() {
+  const u = currentUser();
+  return (u && u.id) ? u.id : 'guest';
+}
+function storageKey(ownerOverride) {
+  return 'pl-cart::' + (ownerOverride || ownerId());
+}
+
+// First load on each page: if the owner changed since last write we
+// discard the previous cart payload. This kills the "logged out but
+// cart still shows the previous buyer's items" bug.
+(function syncOwner() {
+  try {
+    const last = localStorage.getItem(OWNER_KEY);
+    const now = ownerId();
+    if (last && last !== now) {
+      // Clear the previous owner's payload so leftover data can't bleed
+      // into the new session on this device.
+      try { localStorage.removeItem('pl-cart::' + last); } catch (_) {}
+      // Also delete the legacy global key from earlier versions.
+      try { localStorage.removeItem('pl-cart'); } catch (_) {}
+    }
+    localStorage.setItem(OWNER_KEY, now);
+  } catch (_) {}
+})();
+
 function read() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  try { return JSON.parse(localStorage.getItem(storageKey()) || '[]'); }
   catch { return []; }
 }
 function write(items) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  localStorage.setItem(storageKey(), JSON.stringify(items));
   listeners.forEach((fn) => fn(items));
   updateBadge(items);
 }
@@ -91,11 +129,33 @@ export const cart = {
     write(items);
   },
   clear() { write([]); },
+  // Hard-wipes EVERY cart payload on this device. Used by the logout link
+  // so signing out also forgets the cart immediately.
+  clearAll() {
+    try {
+      const remove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('pl-cart::') || k === 'pl-cart')) remove.push(k);
+      }
+      remove.forEach((k) => localStorage.removeItem(k));
+      localStorage.removeItem(OWNER_KEY);
+    } catch (_) {}
+    listeners.forEach((fn) => fn([]));
+    updateBadge([]);
+  },
   on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 };
 
 window.PLCart = cart;
 updateBadge();
+
+// When the user clicks "Sign out" anywhere in the app, wipe the cart
+// immediately so this device's next visitor doesn't inherit it.
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href*="/auth/logout"]');
+  if (link) cart.clearAll();
+});
 
 // Wire any data-add-to-cart buttons (cards on home/shop pages).
 // • Guests are redirected to the register page (with a friendly toast).

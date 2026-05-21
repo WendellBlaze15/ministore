@@ -5,7 +5,7 @@ import io
 import os
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, session
 
 from app.utils.auth import admin_required, current_user
 from app.utils.helpers import slugify, allowed_image, safe_filename
@@ -268,6 +268,15 @@ def product_delete(product_id):
     return redirect(url_for("admin.products"))
 
 
+def _iso(value):
+    """Normalize datetimes / strings to a stable ISO string."""
+    if not value:
+        return ""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
+
+
 def _ensure_bucket(svc, bucket: str) -> None:
     """Create the product images bucket on first use (idempotent)."""
     try:
@@ -447,10 +456,16 @@ def users():
 
         try:
             profiles = (
-                svc.table("profiles").select("id, email, full_name, role, created_at, contact_number").execute()
+                svc.table("profiles").select("id, email, full_name, role, created_at, contact_number, avatar_url").execute()
             ).data or []
         except Exception:
-            profiles = []
+            # avatar_url column may not exist yet — retry without it
+            try:
+                profiles = (
+                    svc.table("profiles").select("id, email, full_name, role, created_at, contact_number").execute()
+                ).data or []
+            except Exception:
+                profiles = []
         profile_by_id = {p["id"]: p for p in profiles}
 
         try:
@@ -469,14 +484,6 @@ def users():
             if o.get("status") != "cancelled":
                 order_spend[uid] = order_spend.get(uid, 0.0) + float(o.get("total") or 0)
 
-        def _iso(value):
-            """Normalize datetimes / strings to a stable ISO string."""
-            if not value:
-                return ""
-            if isinstance(value, datetime):
-                return value.isoformat()
-            return str(value)
-
         for u in auth_users:
             uid = u.id
             p = profile_by_id.get(uid, {})
@@ -486,6 +493,7 @@ def users():
                 "full_name": p.get("full_name") or (getattr(u, "user_metadata", {}) or {}).get("full_name") or "",
                 "role": p.get("role") or "customer",
                 "contact_number": p.get("contact_number") or "",
+                "avatar_url": p.get("avatar_url") or "",
                 "email_confirmed": bool(getattr(u, "email_confirmed_at", None)),
                 "created_at": _iso(getattr(u, "created_at", None) or p.get("created_at")),
                 "last_sign_in_at": _iso(getattr(u, "last_sign_in_at", None)),
@@ -712,15 +720,138 @@ def settings():
     if request.method == "POST":
         full_name = (request.form.get("full_name") or "").strip()[:120]
         contact = (request.form.get("contact_number") or "").strip()[:32]
-        if svc and user and (full_name or contact):
-            patch = {}
-            if full_name: patch["full_name"] = full_name
-            if contact:   patch["contact_number"] = contact
+        patch = {}
+        if full_name: patch["full_name"] = full_name
+        if contact:   patch["contact_number"] = contact
+
+        # Avatar upload (same bucket as product images).
+        avatar_file = request.files.get("avatar")
+        if avatar_file and avatar_file.filename:
+            from app.utils.helpers import allowed_image, safe_filename
+            if not allowed_image(avatar_file.filename):
+                flash("Avatar must be JPG/PNG/WebP.", "error")
+                return redirect(url_for("admin.settings"))
+            bucket = current_app.config.get("SUPABASE_STORAGE_BUCKET", "product-images")
+            path = f"avatars/{user['id']}/{safe_filename(avatar_file.filename)}"
+            try:
+                _ensure_bucket(svc, bucket)
+                svc.storage.from_(bucket).upload(
+                    path=path, file=avatar_file.read(),
+                    file_options={"content-type": avatar_file.mimetype or "image/jpeg"},
+                )
+                patch["avatar_url"] = svc.storage.from_(bucket).get_public_url(path)
+            except Exception as exc:
+                flash(f"Avatar upload failed: {exc}", "error")
+
+        if svc and user and patch:
             try:
                 svc.table("profiles").update(patch).eq("id", user["id"]).execute()
                 flash("Settings saved.", "success")
+                # Mirror identity into session.
+                u = dict(session.get("user") or {})
+                if patch.get("full_name"):  u["name"] = patch["full_name"]
+                if patch.get("avatar_url"): u["avatar_url"] = patch["avatar_url"]
+                session["user"] = u
             except Exception as exc:
-                flash(f"Could not save: {exc}", "error")
+                # Re-try without avatar_url if column missing.
+                if "avatar_url" in patch and "avatar_url" in str(exc).lower():
+                    patch.pop("avatar_url", None)
+                    try:
+                        if patch:
+                            svc.table("profiles").update(patch).eq("id", user["id"]).execute()
+                        flash("Saved, but avatars aren't enabled yet. Run migration 008.", "info")
+                    except Exception as exc2:
+                        flash(f"Could not save: {exc2}", "error")
+                else:
+                    flash(f"Could not save: {exc}", "error")
         return redirect(url_for("admin.settings"))
 
     return render_template("admin/settings.html", profile=profile)
+
+
+@bp.route("/settings/password-otp", methods=["POST"])
+@admin_required
+@require_same_origin
+def settings_password_otp():
+    """Send a 6-digit OTP to the admin's email and redirect to the existing
+    /auth/reset page where they paste the code and set a new password."""
+    from app.services.otp import request_reset_code
+
+    user = current_user() or {}
+    email = (user.get("email") or "").lower()
+    if not email:
+        return redirect(url_for("admin.settings"))
+
+    ok, message = request_reset_code(email)
+    if ok:
+        flash(message, "success")
+        return redirect(url_for("auth.reset", email=email))
+    flash(message or "Could not send a reset code right now.", "error")
+    return redirect(url_for("admin.settings"))
+
+
+@bp.route("/users/<user_id>/view")
+@admin_required
+def user_view(user_id):
+    """Full read-only view of a buyer + their orders + chat link. Replaces
+    the riskier role-toggle button so admins can't accidentally demote
+    themselves or promote a stranger to admin."""
+    svc = get_service_client()
+    if not svc:
+        flash("Server not configured.", "error")
+        return redirect(url_for("admin.users"))
+
+    profile = {}
+    auth_user = None
+    try:
+        profile = (svc.table("profiles").select("*").eq("id", user_id).single().execute()).data or {}
+    except Exception:
+        pass
+    try:
+        auth_user = svc.auth.admin.get_user_by_id(user_id)
+    except Exception:
+        auth_user = None
+
+    orders = []
+    try:
+        orders = (
+            svc.table("orders").select("*").eq("user_id", user_id)
+            .order("created_at", desc=True).limit(100).execute()
+        ).data or []
+    except Exception:
+        pass
+
+    wishlist_count = 0
+    try:
+        wishlist_count = (
+            svc.table("wishlists").select("id", count="exact").eq("user_id", user_id).execute()
+        ).count or 0
+    except Exception:
+        pass
+
+    chat_id = None
+    try:
+        rows = (svc.table("chats").select("id").eq("user_id", user_id).limit(1).execute()).data or []
+        chat_id = rows[0]["id"] if rows else None
+    except Exception:
+        pass
+
+    total_spent = sum(float(o.get("total") or 0) for o in orders if o.get("status") != "cancelled")
+    raw_user = getattr(auth_user, "user", None) or auth_user
+    created_at = _iso(getattr(raw_user, "created_at", None) or profile.get("created_at"))
+    last_sign_in = _iso(getattr(raw_user, "last_sign_in_at", None))
+    email_confirmed = bool(getattr(raw_user, "email_confirmed_at", None))
+
+    return render_template(
+        "admin/user_view.html",
+        profile=profile,
+        user_id=user_id,
+        orders=orders,
+        wishlist_count=wishlist_count,
+        chat_id=chat_id,
+        total_spent=total_spent,
+        created_at=created_at,
+        last_sign_in=last_sign_in,
+        email_confirmed=email_confirmed,
+        email=(profile.get("email") or (getattr(raw_user, "email", "") if raw_user else "")),
+    )

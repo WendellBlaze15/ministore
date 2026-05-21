@@ -1,0 +1,125 @@
+{% extends "admin/_layout.html" %}
+{% block title %}{{ profile.full_name or email }} — User profile{% endblock %}
+{% block admin %}
+<header data-reveal style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap: wrap;">
+  <div>
+    <a href="{{ url_for('admin.users') }}" class="muted" style="text-decoration:none;">← All users</a>
+    <h1 style="margin: 6px 0 4px;">Buyer profile</h1>
+    <p class="muted">Read-only view of this account's information, orders, and activity.</p>
+  </div>
+  <div style="display:flex; gap: 8px;">
+    {% if chat_id %}
+    <a class="btn btn-secondary btn-sm" href="{{ url_for('chat.admin_room', chat_id=chat_id) }}">💬 Open chat</a>
+    {% endif %}
+    {% if not email_confirmed %}
+    <form method="post" action="{{ url_for('admin.user_force_verify', user_id=user_id) }}" style="display:inline;">
+      <button class="btn btn-secondary btn-sm" type="submit">✔ Verify email</button>
+    </form>
+    {% endif %}
+  </div>
+</header>
+
+<section class="user-view-grid" data-reveal>
+  <div class="panel user-view-card">
+    <div class="user-view-head">
+      {% if profile.avatar_url %}
+        <img src="{{ profile.avatar_url }}" alt="" class="user-avatar-lg" />
+      {% else %}
+        <div class="user-avatar-lg letter">{{ (profile.full_name or email or 'F')[:1] | upper }}</div>
+      {% endif %}
+      <div>
+        <h2 style="margin: 0 0 4px;">{{ profile.full_name or 'No name yet' }}</h2>
+        <div class="muted">{{ email }}</div>
+        <div style="margin-top: 8px;">
+          <span class="badge {{ 'badge-pink' if (profile.role or 'customer') == 'admin' else 'badge-lavender' }}">{{ profile.role or 'customer' }}</span>
+          {% if email_confirmed %}
+            <span class="badge badge-green">verified</span>
+          {% else %}
+            <span class="badge badge-amber">email pending</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <ul class="dotted" style="margin-top: 18px;">
+      <li><b>Username</b><span class="muted">{{ profile.username or 'not set' }}</span></li>
+      <li><b>Contact number</b><span class="muted">{{ profile.contact_number or 'not set' }}</span></li>
+      <li><b>Delivery address</b><span class="muted">{{ profile.address or 'not set' }}</span></li>
+      <li><b>Joined</b><span class="muted">{{ (created_at or '')[:10] or '—' }}</span></li>
+      <li><b>Last sign-in</b><span class="muted">{{ (last_sign_in or '')[:16].replace('T', ' ') or 'never' }}</span></li>
+    </ul>
+  </div>
+
+  <aside class="panel user-view-side">
+    <h3 style="margin: 0 0 12px;">Activity</h3>
+    <div class="user-stat">
+      <div class="user-stat-ico">📦</div>
+      <div>
+        <b>{{ orders|length }}</b>
+        <small>Orders placed</small>
+      </div>
+    </div>
+    <div class="user-stat">
+      <div class="user-stat-ico">💸</div>
+      <div>
+        <b>₱{{ '{:,.2f}'.format(total_spent) }}</b>
+        <small>Total spent</small>
+      </div>
+    </div>
+    <div class="user-stat">
+      <div class="user-stat-ico">💖</div>
+      <div>
+        <b>{{ wishlist_count }}</b>
+        <small>In wishlist</small>
+      </div>
+    </div>
+  </aside>
+</section>
+
+<section class="panel" data-reveal>
+  <h3 style="margin: 0 0 12px;">Order history</h3>
+  {% if orders %}
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Placed</th>
+            <th>Items</th>
+            <th>Payment</th>
+            <th>Status</th>
+            <th style="text-align:right;">Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in orders %}
+          <tr>
+            <td><b>#{{ o.id[:8] }}</b></td>
+            <td><small class="muted">{{ (o.created_at or '')[:10] }}</small></td>
+            <td>{{ o.full_name }}</td>
+            <td>{{ (o.payment_method or 'cod') | upper }}</td>
+            <td><span class="pill pill-{{ o.status }}">{{ o.status }}</span></td>
+            <td style="text-align:right;"><b>₱{{ '{:,.2f}'.format(o.total|float) }}</b></td>
+            <td><a class="btn btn-sm btn-secondary" href="{{ url_for('admin.order_detail', order_id=o.id) }}">View</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">This buyer hasn't placed any orders yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel" data-reveal style="border-left: 4px solid var(--pink-400, #ff8db4);">
+  <h3 style="margin: 0 0 6px;">Danger zone</h3>
+  <p class="muted" style="margin: 0 0 14px;">
+    Deleting this account will permanently remove their orders, wishlist, and chats. This action cannot be undone.
+  </p>
+  <form method="post" action="{{ url_for('admin.user_delete', user_id=user_id) }}"
+        onsubmit="return confirm('Permanently delete {{ email }}? This cannot be undone.');">
+    <button class="btn btn-danger btn-sm">🗑 Delete this account</button>
+  </form>
+</section>
+{% endblock %}

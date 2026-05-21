@@ -13,28 +13,16 @@
     <div class="panel-card-head">
       <div class="ico-soft">🔐</div>
       <div>
-        <h3>Change password</h3>
-        <small class="muted">Use a strong password you don't use elsewhere.</small>
+        <h3>Reset password</h3>
+        <small class="muted">We'll email you a 6-digit code. Use it to set a new password.</small>
       </div>
     </div>
-    <form method="post" action="{{ url_for('account.change_password') }}" class="acct-form" id="pwForm">
-      <div class="field">
-        <label>Current password</label>
-        <input type="password" name="current_password" required autocomplete="current-password" />
-      </div>
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <div class="field">
-          <label>New password</label>
-          <input type="password" id="newPw" name="new_password" minlength="8" required autocomplete="new-password" />
-          <small class="help">At least 8 characters.</small>
-        </div>
-        <div class="field" data-field="confirm_password">
-          <label>Confirm new password</label>
-          <input type="password" id="confirmPw" name="confirm_password" minlength="8" required autocomplete="new-password" />
-          <small class="field-err" data-err></small>
-        </div>
-      </div>
-      <button class="btn btn-primary" type="submit">Update password</button>
+    <p class="muted" style="margin: 8px 0 14px;">
+      For your security we now reset your password through email verification.
+      Click below and we'll send a one-time code to <b>{{ session.user.email }}</b>.
+    </p>
+    <form method="post" action="{{ url_for('account.request_password_otp') }}" class="acct-form">
+      <button class="btn btn-primary" type="submit">📨 Send me a reset code</button>
     </form>
   </div>
 </section>
@@ -78,28 +66,4 @@
     </form>
   </div>
 </section>
-
-<script>
-  (function () {
-    const pw = document.getElementById('newPw');
-    const cf = document.getElementById('confirmPw');
-    const cfWrap = cf.closest('.field');
-    const cfErr = cfWrap.querySelector('[data-err]');
-    function syncMatch() {
-      if (!cf.value) { cfWrap.classList.remove('invalid','match-ok'); cfErr.textContent=''; return; }
-      if (cf.value === pw.value && cf.value.length >= 8) {
-        cfWrap.classList.remove('invalid'); cfWrap.classList.add('match-ok');
-        cfErr.textContent = 'Passwords match ✓'; cfErr.style.color = '#2d7a47';
-      } else {
-        cfWrap.classList.remove('match-ok'); cfWrap.classList.add('invalid');
-        cfErr.textContent = "Passwords don't match yet."; cfErr.style.color = '';
-      }
-    }
-    pw.addEventListener('input', syncMatch);
-    cf.addEventListener('input', syncMatch);
-    document.getElementById('pwForm').addEventListener('submit', (e) => {
-      if (pw.value !== cf.value) { e.preventDefault(); cf.focus(); }
-    });
-  })();
-</script>
 {% endblock %}

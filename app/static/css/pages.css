@@ -1017,6 +1017,108 @@
 .oos-banner p { margin: 0 0 12px; color: var(--ink-700, #4a3540); }
 
 /* ============================================================
+   Avatar editor (profile + admin settings)
+============================================================ */
+.avatar-edit {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px;
+  background: linear-gradient(135deg, #fff7fb 0%, #fffaf4 100%);
+  border: 1px solid rgba(244, 114, 182, .25);
+  border-radius: 16px;
+  margin-bottom: 18px;
+}
+.avatar-edit-preview {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #ffd2e1, #efe5ff);
+  border: 3px solid #fff;
+  box-shadow: 0 6px 14px rgba(196, 54, 109, .2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 84px;
+}
+.avatar-edit-preview img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.avatar-letter {
+  font-family: var(--font-display, 'Fraunces', serif);
+  font-size: 2.2rem;
+  color: var(--pink-700, #c5366d);
+  font-weight: 700;
+}
+
+/* ============================================================
+   Admin · single user view (view button instead of role toggle)
+============================================================ */
+.user-view-grid {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 18px;
+  margin: 22px 0;
+}
+@media (max-width: 880px) {
+  .user-view-grid { grid-template-columns: 1fr; }
+}
+.user-view-card,
+.user-view-side { padding: 22px; }
+.user-view-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.user-avatar-lg {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffd2e1, #efe5ff);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid #fff;
+  box-shadow: 0 6px 16px rgba(196, 54, 109, .22);
+  object-fit: cover;
+}
+.user-avatar-lg.letter {
+  font-family: var(--font-display, 'Fraunces', serif);
+  font-size: 2.4rem;
+  color: var(--pink-700, #c5366d);
+  font-weight: 700;
+}
+.user-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--border, #f8d6e3);
+  margin-bottom: 8px;
+}
+.user-stat:last-child { margin-bottom: 0; }
+.user-stat-ico {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffe6f0, #efe5ff);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+}
+.user-stat b {
+  display: block;
+  font-family: var(--font-display, 'Fraunces', serif);
+  font-size: 1.3rem;
+  color: var(--pink-700, #c5366d);
+  line-height: 1.1;
+}
+.user-stat small { color: var(--ink-500, #7a6470); font-size: .82rem; }
+
+/* ============================================================
    Order counters + order cards (buyer)
 ============================================================ */
 .order-counters {

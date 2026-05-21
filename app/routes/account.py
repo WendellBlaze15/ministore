@@ -5,9 +5,41 @@ from flask import Blueprint, render_template, request, jsonify, redirect, url_fo
 
 from app.utils.auth import login_required, current_user
 from app.utils.security import require_same_origin
+from app.utils.helpers import allowed_image, safe_filename
 from app.services.supabase_client import get_service_client, get_anon_client
 
 bp = Blueprint("account", __name__)
+
+
+def _upload_avatar(svc, user_id: str, file) -> str | None:
+    """Upload an avatar to the Supabase storage bucket and return its public URL.
+    Returns None on failure. The bucket is reused from the product-images
+    config to avoid extra setup."""
+    if not file or not file.filename:
+        return None
+    if not allowed_image(file.filename):
+        return None
+    bucket = current_app.config.get("SUPABASE_STORAGE_BUCKET", "product-images")
+    path = f"avatars/{user_id}/{safe_filename(file.filename)}"
+    try:
+        data_bytes = file.read()
+        # Ensure bucket exists (best-effort, same as products).
+        try:
+            buckets = svc.storage.list_buckets() or []
+            names = {getattr(b, "name", None) or (b.get("name") if isinstance(b, dict) else None) for b in buckets}
+            if bucket not in names:
+                svc.storage.create_bucket(bucket, options={"public": True})
+        except Exception:
+            pass
+        svc.storage.from_(bucket).upload(
+            path=path,
+            file=data_bytes,
+            file_options={"content-type": file.mimetype or "image/jpeg"},
+        )
+        return svc.storage.from_(bucket).get_public_url(path)
+    except Exception as exc:
+        current_app.logger.warning("avatar upload failed: %s", exc)
+        return None
 
 
 def _profile(svc, user_id: str) -> dict:
@@ -126,16 +158,36 @@ def profile_save():
     if contact_number: patch["contact_number"] = contact_number
     patch["address"] = address  # allow clearing
 
+    # Optional avatar upload.
+    avatar_file = request.files.get("avatar")
+    if avatar_file and avatar_file.filename:
+        url = _upload_avatar(svc, user["id"], avatar_file)
+        if url:
+            patch["avatar_url"] = url
+        else:
+            flash("Could not upload avatar (please use JPG/PNG/WebP).", "error")
+
     try:
         svc.table("profiles").update(patch).eq("id", user["id"]).execute()
     except Exception as exc:
-        flash(f"Could not save: {exc}", "error")
-        return redirect(url_for("account.profile"))
+        # If avatar_url column doesn't exist yet, retry without it.
+        if "avatar_url" in patch and "avatar_url" in str(exc).lower():
+            patch.pop("avatar_url", None)
+            try:
+                svc.table("profiles").update(patch).eq("id", user["id"]).execute()
+                flash("Saved, but avatars aren't enabled yet. Run migration 008.", "info")
+            except Exception as exc2:
+                flash(f"Could not save: {exc2}", "error")
+                return redirect(url_for("account.profile"))
+        else:
+            flash(f"Could not save: {exc}", "error")
+            return redirect(url_for("account.profile"))
 
-    if full_name:
-        from flask import session
-        u = dict(session.get("user") or {}); u["name"] = full_name
-        session["user"] = u
+    # Mirror identity changes into the session so navbar/sidebar update.
+    u = dict(session.get("user") or {})
+    if full_name: u["name"] = full_name
+    if patch.get("avatar_url"): u["avatar_url"] = patch["avatar_url"]
+    session["user"] = u
 
     flash("Profile updated. 🌸", "success")
     return redirect(url_for("account.profile"))
@@ -223,56 +275,25 @@ def settings():
     return render_template("account/settings.html", profile=_profile(svc, user["id"]))
 
 
-@bp.route("/settings/password", methods=["POST"])
+@bp.route("/settings/password-otp", methods=["POST"])
 @login_required
 @require_same_origin
-def change_password():
-    """Verify the user's current password, then update it via the Auth admin API."""
+def request_password_otp():
+    """Send a 6-digit OTP to the signed-in user's email, then redirect them
+    to /auth/reset (the existing reset page) so they can paste the code and
+    set a new password. This replaces the old current-password flow with a
+    safer email-verified one (matching the buyer's expectation in the UI)."""
+    from app.services.otp import request_reset_code
+
     user = current_user()
     if not user:
-        return jsonify({"ok": False, "error": "Not signed in."}), 401
+        return redirect(url_for("auth.login"))
 
-    data = request.form if not request.is_json else (request.get_json(silent=True) or {})
-    current_pw = data.get("current_password") or ""
-    new_pw = data.get("new_password") or ""
-    confirm_pw = data.get("confirm_password") or ""
-
-    if not (current_pw and new_pw and confirm_pw):
-        flash("Please fill in all the password fields.", "error")
-        return redirect(url_for("account.settings"))
-    if len(new_pw) < 8:
-        flash("New password must be at least 8 characters.", "error")
-        return redirect(url_for("account.settings"))
-    if new_pw != confirm_pw:
-        flash("New passwords don't match.", "error")
-        return redirect(url_for("account.settings"))
-    if new_pw == current_pw:
-        flash("New password must be different from your current one.", "error")
-        return redirect(url_for("account.settings"))
-
-    # Re-verify current password by attempting to sign in (cheap + safe).
-    anon = get_anon_client()
-    if anon is None:
-        flash("Server is not configured.", "error")
-        return redirect(url_for("account.settings"))
-    try:
-        anon.auth.sign_in_with_password({"email": user["email"], "password": current_pw})
-    except Exception:
-        flash("Your current password is incorrect.", "error")
-        return redirect(url_for("account.settings"))
-
-    svc = get_service_client()
-    if svc is None:
-        flash("Server is not configured.", "error")
-        return redirect(url_for("account.settings"))
-    try:
-        svc.auth.admin.update_user_by_id(user["id"], {"password": new_pw})
-    except Exception as exc:
-        current_app.logger.warning("change_password failed: %s", exc)
-        flash("Could not update your password. Please try again.", "error")
-        return redirect(url_for("account.settings"))
-
-    flash("Password updated. 💖 Use your new password next time.", "success")
+    ok, message = request_reset_code(user["email"])
+    if ok:
+        flash(message, "success")
+        return redirect(url_for("auth.reset", email=user["email"]))
+    flash(message or "Could not send a reset code right now.", "error")
     return redirect(url_for("account.settings"))
 
 

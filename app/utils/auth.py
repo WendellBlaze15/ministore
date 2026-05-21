@@ -75,14 +75,25 @@ def _fetch_existing_profile(user_id: str) -> dict:
     try:
         rows = (
             svc.table("profiles")
-            .select("role, full_name, email, username, contact_number, address")
+            .select("role, full_name, email, username, contact_number, address, avatar_url")
             .eq("id", user_id)
             .limit(1)
             .execute()
         ).data or []
         return rows[0] if rows else {}
     except Exception:
-        return {}
+        # Older schema may not have avatar_url yet — retry without it.
+        try:
+            rows = (
+                svc.table("profiles")
+                .select("role, full_name, email, username, contact_number, address")
+                .eq("id", user_id)
+                .limit(1)
+                .execute()
+            ).data or []
+            return rows[0] if rows else {}
+        except Exception:
+            return {}
 
 
 def store_user_in_session(user_obj: dict, access_token: str, refresh_token: str) -> None:
@@ -110,6 +121,7 @@ def store_user_in_session(user_obj: dict, access_token: str, refresh_token: str)
         "email": email,
         "name": name,
         "role": role,
+        "avatar_url": existing.get("avatar_url"),
     }
     session["access_token"] = access_token
     session["refresh_token"] = refresh_token
