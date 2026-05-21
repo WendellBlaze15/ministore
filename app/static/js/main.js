@@ -63,12 +63,35 @@ window.flashServerMessages = function (messages) {
 };
 
 // ---------- Reveal-on-scroll ----------
-const io = new IntersectionObserver((entries) => {
-  entries.forEach((e) => {
-    if (e.isIntersecting) {
-      e.target.classList.add('in');
-      io.unobserve(e.target);
-    }
-  });
-}, { threshold: 0.12 });
-document.querySelectorAll('[data-reveal]').forEach((el) => io.observe(el));
+function revealAll() {
+  document.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('in'));
+}
+
+function setupReveal() {
+  // Graceful fallback: if no IntersectionObserver, just show everything.
+  if (!('IntersectionObserver' in window)) { revealAll(); return; }
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.05, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('[data-reveal]').forEach((el) => io.observe(el));
+
+  // Belt-and-suspenders: above-the-fold items in some browsers fire late
+  // (e.g. after fonts), and we never want the page to stay invisible.
+  setTimeout(revealAll, 1200);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupReveal);
+} else {
+  setupReveal();
+}
+
+// Re-run if the user toggles "Reduce motion" — also expose for late content.
+window.PLRevealAll = revealAll;

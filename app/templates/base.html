@@ -8,8 +8,18 @@
   <meta name="description" content="{{ APP_TAGLINE }}. Handmade bookmarks, keychains, polaroid prints & crafts from Papier Lab." />
   <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}" type="image/png" />
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logo.png') }}" />
+  <script>
+    // Mark <html> as JS-enabled BEFORE CSS runs so the reveal animation
+    // only ever hides content when we know JS will un-hide it.
+    document.documentElement.classList.add('js');
+  </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}" />
+  <style>
+    /* Reveal animation is opt-in only when JS is alive. */
+    html.js [data-reveal] { opacity: 0; transform: translateY(14px); transition: opacity .55s ease, transform .55s ease; }
+    html.js [data-reveal].in { opacity: 1; transform: translateY(0); }
+  </style>
   {% block head %}{% endblock %}
 </head>
 <body>

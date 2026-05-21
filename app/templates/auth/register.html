@@ -28,16 +28,42 @@
 
       <form id="registerForm" style="margin-top: 20px;">
         <div class="field">
-          <label>Full name</label>
-          <input type="text" id="name" required placeholder="Andrea Cruz" />
+          <label>Full name <span style="color: var(--pink-600)">*</span></label>
+          <input type="text" id="name" required placeholder="Andrea Cruz" autocomplete="name" />
         </div>
         <div class="field">
-          <label>Email</label>
-          <input type="email" id="email" required placeholder="hello@papierlab.shop" />
+          <label>Email address <span style="color: var(--pink-600)">*</span></label>
+          <input type="email" id="email" required placeholder="hello@papierlab.shop" autocomplete="email" />
         </div>
         <div class="field">
-          <label>Password</label>
-          <input type="password" id="password" minlength="6" required placeholder="At least 6 characters" />
+          <label>Username <small class="muted">(optional)</small></label>
+          <input type="text" id="username" placeholder="andrea_papier" autocomplete="username"
+                 pattern="^[A-Za-z0-9_.\-]{3,30}$"
+                 title="3-30 letters, numbers, dot, dash, or underscore" />
+          <small class="help">Used for chat & order notes. Leave blank to use your full name.</small>
+        </div>
+        <div class="field">
+          <label>Contact number <span style="color: var(--pink-600)">*</span></label>
+          <input type="tel" id="contact" required placeholder="09XX XXX XXXX" autocomplete="tel"
+                 pattern="^[0-9 +\-()]{7,20}$" title="Digits, spaces, +, -, ( ) only" />
+        </div>
+        <div class="field">
+          <label>Delivery address <small class="muted">(optional)</small></label>
+          <textarea id="address" placeholder="House #, street, barangay, city, province, ZIP" rows="2"
+                    autocomplete="street-address"></textarea>
+          <small class="help">You can fill this in later at checkout — it saves you time later. 🌸</small>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="field">
+            <label>Password <span style="color: var(--pink-600)">*</span></label>
+            <input type="password" id="password" minlength="8" required placeholder="At least 8 characters"
+                   autocomplete="new-password" />
+          </div>
+          <div class="field">
+            <label>Confirm password <span style="color: var(--pink-600)">*</span></label>
+            <input type="password" id="confirm_password" minlength="8" required placeholder="Repeat password"
+                   autocomplete="new-password" />
+          </div>
         </div>
         <button class="btn btn-primary btn-block" type="submit" style="margin-top: 8px;">Create my account</button>
       </form>
@@ -58,15 +84,26 @@
   document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!supabase) { toast('Supabase not configured.', { type: 'error' }); return; }
-    const name = document.getElementById('name').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
+
+    const name             = document.getElementById('name').value.trim();
+    const email            = document.getElementById('email').value.trim();
+    const username         = document.getElementById('username').value.trim();
+    const contact          = document.getElementById('contact').value.trim();
+    const address          = document.getElementById('address').value.trim();
+    const password         = document.getElementById('password').value;
+    const confirm_password = document.getElementById('confirm_password').value;
+
+    if (password !== confirm_password) {
+      toast("Passwords don't match.", { type: 'error' });
+      return;
+    }
+
     const btn = e.target.querySelector('button[type=submit]');
     btn.disabled = true; btn.textContent = 'Creating…';
 
     const { data, error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { full_name: name } },
+      options: { data: { full_name: name, username, contact_number: contact, address } },
     });
     if (error) {
       toast(error.message, { type: 'error' });
@@ -74,11 +111,27 @@
       return;
     }
     if (!data.session) {
+      // Email confirmation is enabled. Tell user, but also save the rest
+      // of the fields by hitting our backend with a "pending" payload —
+      // they'll be merged in once they confirm and sign in.
       toast('Check your email to confirm your account 💌', { type: 'info' });
       btn.disabled = false; btn.textContent = 'Create my account';
       return;
     }
+
     await syncSessionToServer();
+
+    // Persist the extra profile fields server-side.
+    try {
+      await fetch("{{ url_for('auth.complete_profile') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: name, username, contact_number: contact, address,
+        }),
+      });
+    } catch (_) { /* non-fatal */ }
+
     toast('Welcome to Papier Lab! 🌸', { type: 'success' });
     window.location.href = '/';
   });

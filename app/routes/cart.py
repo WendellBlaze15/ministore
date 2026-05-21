@@ -26,7 +26,25 @@ def view():
 @login_required
 def checkout():
     user = current_user()
-    return render_template("checkout.html", user=user)
+    prefill = {"full_name": user.get("name") or "", "contact_number": "", "address": ""}
+    svc = get_service_client()
+    if svc:
+        try:
+            rows = (
+                svc.table("profiles")
+                .select("full_name, contact_number, address")
+                .eq("id", user["id"])
+                .limit(1)
+                .execute()
+            ).data or []
+            if rows:
+                p = rows[0]
+                prefill["full_name"] = p.get("full_name") or prefill["full_name"]
+                prefill["contact_number"] = p.get("contact_number") or ""
+                prefill["address"] = p.get("address") or ""
+        except Exception:
+            pass
+    return render_template("checkout.html", user=user, prefill=prefill)
 
 
 @bp.route("/checkout", methods=["POST"])

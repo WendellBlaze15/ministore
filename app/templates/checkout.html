@@ -16,15 +16,17 @@
       <h3 style="margin-top: 0;">Delivery details</h3>
       <div class="field">
         <label>Full name</label>
-        <input type="text" id="full_name" required value="{{ user.name or '' }}" />
+        <input type="text" id="full_name" required value="{{ prefill.full_name or '' }}" autocomplete="name" />
       </div>
       <div class="field">
         <label>Contact number</label>
-        <input type="tel" id="contact_number" required placeholder="09XX XXX XXXX" />
+        <input type="tel" id="contact_number" required placeholder="09XX XXX XXXX"
+               value="{{ prefill.contact_number or '' }}" autocomplete="tel" />
       </div>
       <div class="field">
         <label>Delivery address</label>
-        <textarea id="address" required placeholder="House #, street, barangay, city, province, ZIP"></textarea>
+        <textarea id="address" required placeholder="House #, street, barangay, city, province, ZIP"
+                  autocomplete="street-address">{{ prefill.address or '' }}</textarea>
       </div>
       <div class="field">
         <label>Notes / customization for the studio</label>

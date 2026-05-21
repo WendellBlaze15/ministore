@@ -75,7 +75,7 @@ def _fetch_existing_profile(user_id: str) -> dict:
     try:
         rows = (
             svc.table("profiles")
-            .select("role, full_name, email")
+            .select("role, full_name, email, username, contact_number, address")
             .eq("id", user_id)
             .limit(1)
             .execute()
@@ -86,7 +86,11 @@ def _fetch_existing_profile(user_id: str) -> dict:
 
 
 def store_user_in_session(user_obj: dict, access_token: str, refresh_token: str) -> None:
-    """Persist Supabase user + tokens to the Flask session."""
+    """Persist Supabase user + tokens to the Flask session.
+
+    Also mirrors any registration metadata (username, contact_number,
+    address) into the public.profiles row on first sign-in.
+    """
     metadata = user_obj.get("user_metadata") or {}
     email = user_obj.get("email") or ""
     user_id = user_obj.get("id") or ""
@@ -109,6 +113,43 @@ def store_user_in_session(user_obj: dict, access_token: str, refresh_token: str)
     }
     session["access_token"] = access_token
     session["refresh_token"] = refresh_token
+
+    # Sync registration metadata (full_name + username + contact_number + address)
+    # into the profile row. Idempotent: only fills empty fields, never overwrites
+    # data the user might have edited later.
+    try:
+        _sync_metadata_to_profile(user_id, existing, metadata)
+    except Exception:  # pragma: no cover - best-effort
+        pass
+
+
+def _sync_metadata_to_profile(user_id: str, existing: dict, metadata: dict) -> None:
+    if not user_id or not metadata:
+        return
+    svc = get_service_client()
+    if not svc:
+        return
+
+    patch = {}
+    full_name = (metadata.get("full_name") or "").strip()
+    username = (metadata.get("username") or "").strip()
+    contact = (metadata.get("contact_number") or "").strip()
+    address = (metadata.get("address") or "").strip()
+
+    if full_name and not (existing.get("full_name") or "").strip():
+        patch["full_name"] = full_name[:120]
+    if username and not (existing.get("username") or "").strip():
+        patch["username"] = username[:40]
+    if contact and not (existing.get("contact_number") or "").strip():
+        patch["contact_number"] = contact[:32]
+    if address and not (existing.get("address") or "").strip():
+        patch["address"] = address[:500]
+
+    if patch:
+        try:
+            svc.table("profiles").update(patch).eq("id", user_id).execute()
+        except Exception as exc:
+            current_app.logger.warning("metadata sync failed: %s", exc)
 
 
 def clear_user_session() -> None:

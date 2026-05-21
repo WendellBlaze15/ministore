@@ -10,7 +10,7 @@ session cookie. Otherwise an attacker could POST a fake user payload.
 """
 from __future__ import annotations
 
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app, session
 
 from app.utils.auth import (
     store_user_in_session,
@@ -137,3 +137,66 @@ def logout():
         return jsonify({"ok": True})
     flash("You're signed out. See you soon! 💌", "success")
     return redirect(url_for("main.home"))
+
+
+@bp.route("/complete-profile", methods=["POST"])
+@require_same_origin
+def complete_profile():
+    """Persist the extra registration fields (username, contact, address) to
+    the ``profiles`` row of the current signed-in user."""
+    from app.services.supabase_client import get_service_client
+
+    user = current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "Not signed in"}), 401
+
+    data = request.get_json(silent=True) or {}
+    full_name = (data.get("full_name") or "").strip()[:120]
+    username = (data.get("username") or "").strip()[:40]
+    contact_number = (data.get("contact_number") or "").strip()[:32]
+    address = (data.get("address") or "").strip()[:500]
+
+    svc = get_service_client()
+    if not svc:
+        return jsonify({"ok": False, "error": "Server not configured."}), 500
+
+    patch = {}
+    if full_name:
+        patch["full_name"] = full_name
+    if username:
+        try:
+            # Reject duplicate usernames (case-insensitive).
+            dup = (
+                svc.table("profiles")
+                .select("id")
+                .ilike("username", username)
+                .neq("id", user["id"])
+                .limit(1)
+                .execute()
+            ).data or []
+            if dup:
+                return jsonify({"ok": False, "error": "That username is taken."}), 400
+        except Exception:
+            pass
+        patch["username"] = username
+    if contact_number:
+        patch["contact_number"] = contact_number
+    if address:
+        patch["address"] = address
+
+    if not patch:
+        return jsonify({"ok": True, "message": "Nothing to update."})
+
+    try:
+        svc.table("profiles").update(patch).eq("id", user["id"]).execute()
+    except Exception as exc:
+        current_app.logger.warning("complete_profile failed: %s", exc)
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+    # Refresh in-session display name if needed.
+    if "full_name" in patch:
+        sess_user = dict(session.get("user") or {})
+        sess_user["name"] = patch["full_name"]
+        session["user"] = sess_user
+
+    return jsonify({"ok": True})
